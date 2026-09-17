@@ -6,6 +6,8 @@
   const BOTTOM_GUIDE_Y = 196;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
+  let timeBoxObserver = null;
+  let observedTimeBox = null;
 
   function getContainer() {
     return document.getElementById("seasonMapMomentumContainer");
@@ -150,13 +152,14 @@
 
   function observeTimeBox() {
     const box = getTimeBox();
-    if (!box || box.dataset.momentumObserved === "true") return;
-    box.dataset.momentumObserved = "true";
-    const observer = new MutationObserver(() => {
+    if (!box || observedTimeBox === box) return;
+    timeBoxObserver?.disconnect();
+    observedTimeBox = box;
+    timeBoxObserver = new MutationObserver(() => {
       window.clearTimeout(observeTimeBox._timer);
       observeTimeBox._timer = window.setTimeout(renderSeasonMomentumGraphic, 100);
     });
-    observer.observe(box, { subtree: true, characterData: true, childList: true });
+    timeBoxObserver.observe(box, { subtree: true, characterData: true, childList: true });
   }
 
   window.renderSeasonMomentumGraphic = function () {
