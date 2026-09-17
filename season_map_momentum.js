@@ -164,6 +164,7 @@
   function observeTimeBox() {
     const box = getTimeBox();
     if (!box || observedTimeBox === box) return;
+    window.clearTimeout(observeTimeBox._timer);
     timeBoxObserver?.disconnect();
     observedTimeBox = box;
     timeBoxObserver = new MutationObserver(() => {
