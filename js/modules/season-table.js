@@ -777,17 +777,17 @@ setStickyOffsets() {
     const gScrollHeaderRow = document.createElement("tr");
     // 11 Spalten in fester Reihenfolge (Index 0–10)
     const goalieHeaders = [
-      { label: "Games",      key: "games" },           // 0
-      { label: "MIN",        key: "minutesDec" },       // 1
+      { label: "GP",         key: "games" },            // 0
+      { label: "TOI",        key: "minutesDec" },       // 1
       { label: "GA",         key: "ga" },               // 2
       { label: "SA",         key: "sa" },               // 3
       { label: "SV",         key: "sv" },               // 4
-      { label: "Sv%",        key: "svPctSort" },        // 5
+      { label: "SV%",        key: "svPctSort" },        // 5
       { label: "GAA",        key: "gaaValue" },         // 6
       { label: "SO",         key: "shutouts" },         // 7
-      { label: "Goal Value", key: "goalieGoalValue" },  // 8
+      { label: "GV",         key: "goalieGoalValue" },  // 8
       { label: "MVP",        key: "mvpRank" },          // 9
-      { label: "MVP Points", key: "mvpPointsRounded" }  // 10
+      { label: "MVP P",      key: "mvpPointsRounded" }  // 10
     ];
     goalieHeaders.forEach(def => {
       const th = document.createElement("th");

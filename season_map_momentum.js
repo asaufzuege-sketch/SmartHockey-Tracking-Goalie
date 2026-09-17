@@ -1,18 +1,14 @@
 (function () {
   const SVG_W = 900;
-  const SVG_H = 220;
-  const MARGIN = { left: 32, right: 32, top: 20, bottom: 36 };
-  const MIDLINE_Y = 120;
-  const BOTTOM_GUIDE_Y = 196;
+  const SVG_H = 150;
+  const MARGIN = { left: 32, right: 32, top: 16, bottom: 44 };
+  const PLOT_TOP_Y = 30;
+  const PLOT_BASELINE_Y = SVG_H - MARGIN.bottom;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
 
   function getContainer() {
     return document.getElementById("seasonMapMomentumContainer");
-  }
-
-  function getTimeBox() {
-    return document.getElementById("seasonMapTimeTrackingBox");
   }
 
   function minuteToX(minute) {
@@ -21,8 +17,8 @@
   }
 
   function valueToY(value, maxScale) {
-    const bottomSpace = BOTTOM_GUIDE_Y - MIDLINE_Y;
-    return MIDLINE_Y + ((Number(value || 0) || 0) / maxScale) * bottomSpace;
+    const usableH = PLOT_BASELINE_Y - PLOT_TOP_Y;
+    return PLOT_BASELINE_Y - ((Number(value || 0) || 0) / maxScale) * usableH;
   }
 
   function catmullRom2bezier(points) {
@@ -45,16 +41,26 @@
     return d;
   }
 
-  function readValuesFromTimeBox() {
-    const box = getTimeBox();
-    if (!box) return new Array(12).fill(0);
+  function getBucketValue(timeData, key, selectedGoalie) {
+    const legacyKey = key.replace(/^p/, "sp");
+    const entry = timeData?.[key] ?? timeData?.[legacyKey];
+    if (entry && typeof entry === "object") {
+      return selectedGoalie
+        ? Number(entry[selectedGoalie] || 0)
+        : Object.values(entry).reduce((sum, value) => sum + Number(value || 0), 0);
+    }
+    if (selectedGoalie) return 0;
+    return Number(entry || 0) || 0;
+  }
+
+  function readValuesFromStorage() {
+    const timeData = App.seasonMap?.getSeasonTimeData?.() || {};
+    const selectedGoalie = App.seasonMap?.selectedGoalie || "";
     const values = [];
-    box.querySelectorAll(".period").forEach(periodEl => {
-      const buttons = Array.from(periodEl.querySelectorAll(".period-buttons.bottom-row .time-btn"));
-      const source = buttons.length >= 4 ? buttons : Array.from(periodEl.querySelectorAll(".time-btn")).slice(0, 4);
-      source.slice(0, 4).forEach(button => {
-        values.push(Number(button.textContent || 0) || 0);
-      });
+    ["p1", "p2", "p3"].forEach(period => {
+      for (let index = 0; index < 4; index += 1) {
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie));
+      }
     });
     while (values.length < 12) values.push(0);
     return values.slice(0, 12);
@@ -64,7 +70,7 @@
     const container = getContainer();
     if (!container) return;
 
-    const values = readValuesFromTimeBox();
+    const values = readValuesFromStorage();
     const maxScale = Math.max(MAX_DISPLAY, ...values, 1);
     const points = values.map((value, index) => ({
       x: minuteToX(BUCKET_MINUTES[index]),
@@ -114,22 +120,21 @@
       svg.appendChild(el);
     };
 
-    line(minuteToX(0), 28, minuteToX(60), 28, "#ffffff", "3");
-    line(minuteToX(0), MIDLINE_Y, minuteToX(60), MIDLINE_Y, "#7a7a7a", "3");
-    line(minuteToX(0), BOTTOM_GUIDE_Y, minuteToX(60), BOTTOM_GUIDE_Y, "#d6d6d6", "2");
+    line(minuteToX(0), PLOT_TOP_Y, minuteToX(60), PLOT_TOP_Y, "#ffffff", "2");
+    line(minuteToX(0), PLOT_BASELINE_Y, minuteToX(60), PLOT_BASELINE_Y, "#d6d6d6", "2");
 
     const majorSet = new Set([0, 20, 40, 60]);
     for (let minute = 0; minute <= 60; minute += 5) {
       const x = minuteToX(minute);
       const isMajor = majorSet.has(minute);
-      line(x, 28 - (isMajor ? 18 : 8), x, 28 + (isMajor ? 18 : 8), "#cccccc", isMajor ? "1.6" : "1");
-      text(x, 28 + (isMajor ? 22 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
+      line(x, PLOT_BASELINE_Y - (isMajor ? 10 : 6), x, PLOT_BASELINE_Y + (isMajor ? 10 : 6), "#cccccc", isMajor ? "1.6" : "1");
+      text(x, PLOT_BASELINE_Y + (isMajor ? 16 : 13), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
     }
 
     positiveRuns.forEach(run => {
       const pathD = catmullRom2bezier(run.map(point => ({ x: point.x, y: point.y })));
       const fill = document.createElementNS(svgNS, "path");
-      fill.setAttribute("d", `${pathD} L ${run[run.length - 1].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} L ${run[0].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} Z`);
+      fill.setAttribute("d", `${pathD} L ${run[run.length - 1].x.toFixed(2)} ${PLOT_BASELINE_Y.toFixed(2)} L ${run[0].x.toFixed(2)} ${PLOT_BASELINE_Y.toFixed(2)} Z`);
       fill.setAttribute("fill", "#f07d7d");
       fill.setAttribute("stroke", "#7a7a7a");
       fill.setAttribute("stroke-width", "0.9");
