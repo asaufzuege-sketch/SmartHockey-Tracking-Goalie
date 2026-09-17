@@ -13,10 +13,10 @@ App.statsTable = {
 
   getRows() {
     const selectedGoalies = Array.isArray(App.data.selectedPlayers) ? App.data.selectedPlayers : [];
-    const goalMarkers = App.goalMap?.getCurrentMarkersFromDOM?.()?.[1] || [];
+    const fieldMarkers = App.goalMap?.getCurrentMarkersFromDOM?.()?.[0] || [];
     const counts = new Map();
 
-    goalMarkers.forEach(marker => {
+    fieldMarkers.forEach(marker => {
       if (!marker.player) return;
       if (!counts.has(marker.player)) counts.set(marker.player, { shots: 0, saves: 0, goals: 0 });
       const entry = counts.get(marker.player);

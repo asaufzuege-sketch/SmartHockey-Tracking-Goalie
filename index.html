@@ -109,21 +109,26 @@
           <button id="gameDataBtn" class="top-btn game-data-btn">Game Center</button>
           <button id="resetPlayersBtn" class="top-btn danger-btn">Reset</button>
           <button id="goalieSelectionInfoBtn" class="top-btn">Info</button>
-          <button id="downloadBackupBtn" class="backup-btn">📥 Download Backup</button>
-          <button id="uploadBackupBtn" class="backup-btn">📤 Restore Backup</button>
-          <button id="privacyPolicyBtn" class="top-btn app-link-btn">Privacy</button>
-          <button id="termsOfServiceBtn" class="top-btn app-link-btn">Terms</button>
-          <button id="rateAppBtn" class="top-btn app-link-btn">⭐ Rate</button>
         </div>
       </div>
       <h1>GOALIE SELECTION</h1>
       <p class="subtitle">Select the goalies to display in the table</p>
       <ul id="playerList" class="player-list goalie-only-list"></ul>
+      <div class="backup-buttons">
+        <button id="downloadBackupBtn" class="backup-btn">📥 Download Backup</button>
+        <button id="uploadBackupBtn" class="backup-btn">📤 Restore Backup</button>
+      </div>
+      <div class="app-links-section">
+        <button id="privacyPolicyBtn" class="app-link-btn">Privacy</button>
+        <button id="termsOfServiceBtn" class="app-link-btn">Terms</button>
+        <button id="rateAppBtn" class="app-link-btn">⭐ Rate App</button>
+      </div>
     </div>
 
     <div id="statsPage" class="page" style="display:none;">
       <div class="page-top">
         <div class="top-bar">
+          <button id="selectGoaliesBtn" class="top-btn goalie-selection-btn">Goalie Selection</button>
           <button id="timerBtn" class="top-btn timer timer-left reset" aria-label="Game timer">00:00</button>
           <button id="activeGoalieBtn" class="top-btn" disabled>Goalie</button>
           <button id="goalValueBtn" class="top-btn">Goal Value</button>

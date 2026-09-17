@@ -1505,16 +1505,14 @@ setStickyOffsets() {
   performGoalieExport(entries, opponentIndex) {
     const teamId = App.helpers.getCurrentTeamId();
 
-    // goalMapData aus localStorage lesen (ist kumulativ und persistiert über Seiten-Reload)
-    // App.data.goalMapData kann nach Reload leer sein → immer localStorage bevorzugen
-    let goalMapData = {};
+    // Rink-basierte Count-Daten aus localStorage lesen (persistiert über Seiten-Reload)
+    let rinkCountData = {};
     try {
-      const stored = AppStorage.getItem(`goalMapData_${teamId}`);
-      goalMapData = stored ? JSON.parse(stored) : {};
-      // RAM ebenfalls aktualisieren für Konsistenz
-      App.data.goalMapData = goalMapData;
+      const storedRinkData = AppStorage.getItem(`rinkCountData_${teamId}`);
+      rinkCountData = storedRinkData ? JSON.parse(storedRinkData) : {};
+      App.data.rinkCountData = rinkCountData;
     } catch (e) {
-      goalMapData = App.data.goalMapData || {};
+      rinkCountData = App.data.rinkCountData || {};
     }
 
     const snapshot = App.data.goalieExportSnapshot || {};
@@ -1529,15 +1527,15 @@ setStickyOffsets() {
 
       const goalieName = entry.name;
 
-      // --- Delta aus goalMapData berechnen ---
-      const events = goalMapData[goalieName] || [];
+      // --- Delta aus rinkCountData berechnen ---
+      const events = rinkCountData[goalieName] || [];
       // Kumulativer Zähler
       let cumGA = 0;
       let cumSaves = 0;
       events.forEach(ev => {
         if (ev.eventType === 'goal' && ev.workflowType === 'conceded') {
           cumGA++;
-        } else if (ev.eventType === 'opponent-shot') {
+        } else if (ev.eventType === 'save') {
           cumSaves++;
         }
       });

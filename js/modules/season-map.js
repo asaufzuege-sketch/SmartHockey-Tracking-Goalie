@@ -136,7 +136,7 @@ App.seasonMap = {
     const container = document.getElementById("seasonMapStatsContainer");
     if (!container) return;
 
-    const markers = this.getSeasonMarkers()[1] || [];
+    const markers = this.getSeasonMarkers()[0] || [];
     const counts = new Map();
 
     markers.forEach(marker => {

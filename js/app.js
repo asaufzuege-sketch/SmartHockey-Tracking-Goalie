@@ -123,6 +123,7 @@ function importBackup() {
 }
 
 function bindGlobalNavigation() {
+  document.getElementById("selectGoaliesBtn")?.addEventListener("click", () => App.showPage("selection"));
   document.getElementById("goalValueBtn")?.addEventListener("click", () => App.showPage("goalValue"));
   document.getElementById("seasonBtn")?.addEventListener("click", () => App.showPage("season"));
   document.getElementById("seasonMapBtn")?.addEventListener("click", () => App.showPage("seasonMap"));
@@ -136,7 +137,7 @@ function bindGlobalNavigation() {
   document.getElementById('termsOfServiceBtn')?.addEventListener('click', () => openExternalLink('./terms.html'));
   document.getElementById('rateAppBtn')?.addEventListener('click', () => openExternalLink(RATE_APP_URL));
 
-  const infoMessage = "SmartHockey Tracking Goalie\n\nTap on rink/goal = save (grey).\nLong press on rink/goal = goal (red).\nGoal markers count the goalie table. Rink markers are heat-map only.";
+  const infoMessage = "SmartHockey Tracking Goalie\n\nTap on rink = save (grey).\nLong press on rink = goal (red).\nGoal-image markers are visual heat-map only and do not change counted stats.";
   document.getElementById('goalieSelectionInfoBtn')?.addEventListener('click', () => alert(infoMessage));
 }
 
