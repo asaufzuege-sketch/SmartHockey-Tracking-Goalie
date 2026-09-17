@@ -4294,3 +4294,79 @@ body.locked {
     grid-template-columns: auto 72px minmax(140px, 1fr) 48px;
   }
 }
+
+/* Follow-up fixes #4 */
+#goalieSelectionPage .player-list input[type="checkbox"],
+#goalieSelectionPage input[type="checkbox"] {
+  accent-color: #833031 !important;
+}
+
+#goalieSelectionPage .player-list .pos-fixed,
+#goalieSelectionPage .player-list .position-box {
+  color: #833031 !important;
+}
+
+#statsPage .half-rink-box,
+#seasonMapPage .half-rink-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: var(--half-rink-aspect-width) / var(--half-rink-aspect-height) !important;
+}
+
+#statsPage .half-rink-box img,
+#seasonMapPage .half-rink-box img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center bottom !important;
+}
+
+#seasonMapPage .goal-column {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+#seasonMapPage #seasonGoalRedBox {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+#seasonMapPage #seasonMapTimeTrackingBox,
+#seasonMapPage .time-tracking-box {
+  display: none !important;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --w-nr: 30px;
+    --w-player: 115px;
+    --w-pos: 44px;
+  }
+
+  #seasonMapStatsContainer {
+    overflow-x: hidden !important;
+    padding-right: 0 !important;
+  }
+
+  #seasonMapStatsContainer .season-table-fixed th,
+  #seasonMapStatsContainer .season-table-fixed td,
+  #seasonMapStatsContainer .season-table-scroll th,
+  #seasonMapStatsContainer .season-table-scroll td {
+    font-size: 0.82rem !important;
+    padding: 5px 6px !important;
+  }
+
+  #seasonMapStatsContainer .goalie-table-fixed :is(th, td):nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 899px) {
+  #seasonMapStatsContainer {
+    overflow-x: auto !important;
+  }
+}
