@@ -49,7 +49,6 @@
         ? Number(entry[selectedGoalie] || 0)
         : Object.values(entry).reduce((sum, value) => sum + Number(value || 0), 0);
     }
-    if (selectedGoalie) return 0;
     return Number(entry || 0) || 0;
   }
 
