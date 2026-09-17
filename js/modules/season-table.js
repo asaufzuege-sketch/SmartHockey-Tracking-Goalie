@@ -1539,7 +1539,7 @@ setStickyOffsets() {
       events.forEach(ev => {
         if (ev.eventType === 'goal' && ev.workflowType === 'conceded') {
           cumGA++;
-        } else if (ev.eventType === 'opponent-shot') {
+        } else if (ev.eventType === 'save' || ev.eventType === 'opponent-shot') {
           cumSaves++;
         }
       });

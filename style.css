@@ -4214,12 +4214,12 @@ body.locked {
   accent-color: #833031;
 }
 
-#selectGoaliesBtn {
+.top-btn.goalie-selection-btn {
   background: #1E2A44;
   color: #fff;
 }
 
-#selectGoaliesBtn:hover {
+.top-btn.goalie-selection-btn:hover {
   filter: brightness(1.1);
 }
 

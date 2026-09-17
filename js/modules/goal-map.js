@@ -236,10 +236,11 @@ App.goalMap = {
     fieldMarkers.forEach(marker => {
       if (!marker.player) return;
       if (!rinkCountData[marker.player]) rinkCountData[marker.player] = [];
+      const markerType = this.isGoalMarker(marker) ? "goal" : "save";
       rinkCountData[marker.player].push(
-        this.isGoalMarker(marker)
-          ? { eventType: "goal", workflowType: "conceded", period: marker.period }
-          : { eventType: "opponent-shot", period: marker.period }
+        markerType === "goal"
+          ? { eventType: "goal", workflowType: "conceded", markerType, period: marker.period }
+          : { eventType: "save", markerType, period: marker.period }
       );
     });
 
