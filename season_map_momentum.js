@@ -44,7 +44,11 @@
   function getBucketValue(timeData, key, selectedGoalie) {
     const legacyKey = key.replace(/^p/, "sp");
     const entry = timeData?.[key] ?? timeData?.[legacyKey];
-    if (entry && typeof entry === "object") {
+    const isGoalieMap = entry
+      && typeof entry === "object"
+      && !Array.isArray(entry)
+      && Object.values(entry).every(value => value === null || ["number", "string"].includes(typeof value));
+    if (isGoalieMap) {
       return selectedGoalie
         ? Number(entry[selectedGoalie] || 0)
         : Object.values(entry).reduce((sum, value) => sum + Number(value || 0), 0);
