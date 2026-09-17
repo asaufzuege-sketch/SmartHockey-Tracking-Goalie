@@ -225,7 +225,7 @@ App.goalMap = {
       if (!marker.player) return;
       if (!goalMapData[marker.player]) goalMapData[marker.player] = [];
       goalMapData[marker.player].push(
-        marker.markerType === "goal"
+        this.isGoalMarker(marker)
           ? { eventType: "goal", workflowType: "conceded", period: marker.period }
           : { eventType: "opponent-shot", period: marker.period }
       );
@@ -235,10 +235,19 @@ App.goalMap = {
     AppStorage.setItem(`goalMapData_${teamId}`, JSON.stringify(goalMapData));
   },
 
+  isGoalMarker(marker) {
+    return marker?.markerType === "goal" || marker?.color === "#c62828" || marker?.color === "rgb(198, 40, 40)";
+  },
+
   filterByGoalies(goalieNames) {
-    const allowed = new Set(goalieNames && goalieNames.length ? goalieNames : (App.data.selectedPlayers || []).map(player => player.name));
+    let allowed = null;
+    if (Array.isArray(goalieNames)) {
+      allowed = new Set(goalieNames);
+    } else {
+      allowed = new Set((App.data.selectedPlayers || []).map(player => player.name));
+    }
     document.querySelectorAll("#statsPage .marker-dot").forEach(dot => {
-      dot.style.display = !allowed.size || allowed.has(dot.dataset.player) ? "" : "none";
+      dot.style.display = allowed.has(dot.dataset.player) ? "" : "none";
     });
   },
 
@@ -365,8 +374,8 @@ App.goalMap = {
     alert("Game Center markers exported to Season Map.");
   },
 
-  reset() {
-    if (!confirm("Reset current Game Center tracking data?")) return;
+  reset(skipConfirm = false) {
+    if (!skipConfirm && !confirm("Reset current Game Center tracking data?")) return;
     const teamId = App.helpers.getCurrentTeamId();
     document.querySelectorAll("#statsPage .marker-dot").forEach(dot => dot.remove());
     this.timeTrackingBox?.querySelectorAll(".time-btn").forEach(button => { button.textContent = "0"; });

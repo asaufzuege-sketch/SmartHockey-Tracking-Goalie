@@ -13,13 +13,26 @@ App.statsTable = {
 
   getRows() {
     const selectedGoalies = Array.isArray(App.data.selectedPlayers) ? App.data.selectedPlayers : [];
-    const goalMapData = App.data.goalMapData || {};
+    const goalMarkers = App.goalMap?.getCurrentMarkersFromDOM?.()?.[1] || [];
+    const counts = new Map();
+
+    goalMarkers.forEach(marker => {
+      if (!marker.player) return;
+      if (!counts.has(marker.player)) counts.set(marker.player, { shots: 0, saves: 0, goals: 0 });
+      const entry = counts.get(marker.player);
+      entry.shots += 1;
+      if (App.goalMap?.isGoalMarker?.(marker)) {
+        entry.goals += 1;
+      } else {
+        entry.saves += 1;
+      }
+    });
 
     return selectedGoalies.map(goalie => {
-      const events = Array.isArray(goalMapData[goalie.name]) ? goalMapData[goalie.name] : [];
-      const goals = events.filter(event => event.eventType === "goal" && event.workflowType === "conceded").length;
-      const saves = events.filter(event => event.eventType === "opponent-shot").length;
-      const shots = goals + saves;
+      const totals = counts.get(goalie.name) || { shots: 0, saves: 0, goals: 0 };
+      const goals = totals.goals;
+      const saves = totals.saves;
+      const shots = totals.shots;
       const savePct = shots ? `${((saves / shots) * 100).toFixed(1)}%` : "0.0%";
 
       return {

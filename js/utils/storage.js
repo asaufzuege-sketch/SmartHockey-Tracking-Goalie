@@ -4,11 +4,23 @@ const STORAGE_PREFIX = 'sGoalie_';
 // Storage Utility Functions
 const AppStorage = {
   prefix: STORAGE_PREFIX,
+  legacyPrefix: 'sPro_',
   _autoBackupInterval: null,
   _autoBackupStarted: false,
 
   getItem(key) {
-    return localStorage.getItem(this.prefix + key);
+    const newKey = this.prefix + key;
+    const currentValue = localStorage.getItem(newKey);
+    if (currentValue !== null) return currentValue;
+
+    const legacyKey = this.legacyPrefix + key;
+    const legacyValue = localStorage.getItem(legacyKey);
+    if (legacyValue !== null) {
+      try { localStorage.setItem(newKey, legacyValue); } catch (e) {}
+      return legacyValue;
+    }
+
+    return null;
   },
   
   setItem(key, value) {
@@ -17,6 +29,7 @@ const AppStorage = {
   
   removeItem(key) {
     localStorage.removeItem(this.prefix + key);
+    localStorage.removeItem(this.legacyPrefix + key);
   },
 
   startAutoBackup() {

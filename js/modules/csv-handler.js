@@ -62,7 +62,7 @@ App.csvHandler = {
   
   // Aktuelle Team-ID ermitteln
   getCurrentTeamId() {
-    return App.data.currentTeam || "team1";
+    return App.helpers.getCurrentTeamId();
   },
   
   // Teamspezifische Storage Keys

@@ -27,7 +27,7 @@ function waitForCSSLoad() {
 }
 
 async function restoreFromIndexedDBIfNeeded() {
-  const hasData = Object.keys(localStorage).some(k => k.startsWith('sGoalie_'));
+  const hasData = Object.keys(localStorage).some(k => k.startsWith('sGoalie_') || k.startsWith('sPro_'));
   if (hasData || typeof IDBBackup === 'undefined') return;
 
   try {
@@ -90,8 +90,7 @@ function importBackup() {
           return;
         }
 
-        const allowedApps = ['SmartHockey-Tracking-Goalie', 'SmartHockey-Tracking-Team-Pro'];
-        if (importObj.appName && !allowedApps.includes(importObj.appName)) {
+        if (importObj.appName && importObj.appName !== 'SmartHockey-Tracking-Goalie') {
           alert('This backup is from a different app.');
           return;
         }
@@ -102,7 +101,7 @@ function importBackup() {
         }
 
         Object.keys(localStorage)
-          .filter(k => k.startsWith('sGoalie_'))
+          .filter(k => k.startsWith('sGoalie_') || k.startsWith('sPro_'))
           .forEach(k => localStorage.removeItem(k));
 
         Object.keys(importObj.data).forEach(key => {

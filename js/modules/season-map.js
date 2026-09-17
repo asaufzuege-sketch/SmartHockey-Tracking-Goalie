@@ -12,7 +12,19 @@ App.seasonMap = {
 
   getSeasonMarkers() {
     try {
-      return JSON.parse(AppStorage.getItem(`seasonMapMarkers_${App.helpers.getCurrentTeamId()}`) || "[[],[]]");
+      const raw = JSON.parse(AppStorage.getItem(`seasonMapMarkers_${App.helpers.getCurrentTeamId()}`) || "[[],[]]");
+      if (Array.isArray(raw) && raw.length >= 3) {
+        const knownGoalies = new Set([
+          ...Object.keys(App.data.goalieSeasonData || {}),
+          ...this.getLegacyGoalieNamesFromTimeData()
+        ]);
+        const legacyGoalMarkers = [
+          ...(raw[2] || []),
+          ...((raw[1] || []).filter(marker => !marker.player || knownGoalies.size === 0 || knownGoalies.has(marker.player)))
+        ];
+        return [raw[0] || [], legacyGoalMarkers];
+      }
+      return Array.isArray(raw) ? [raw[0] || [], raw[1] || []] : [[], []];
     } catch (e) {
       return [[], []];
     }
@@ -22,16 +34,35 @@ App.seasonMap = {
     return App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${App.helpers.getCurrentTeamId()}`, {}) || {};
   },
 
-  getAvailableGoalies() {
-    const goalies = new Set((App.data.selectedPlayers || []).map(player => player.name));
-    this.getSeasonMarkers().forEach(boxMarkers => {
-      boxMarkers.forEach(marker => {
-        if (marker.player) goalies.add(marker.player);
-      });
+  getLegacyGoalieNamesFromTimeData() {
+    const names = new Set();
+    Object.entries(this.getSeasonTimeData()).forEach(([key, goalieCounts]) => {
+      const buttonIndex = Number(String(key).split('_')[1]);
+      if (buttonIndex < 4) return;
+      Object.keys(goalieCounts || {}).forEach(goalie => names.add(goalie));
     });
-    Object.values(this.getSeasonTimeData()).forEach(goalieCounts => {
+    return Array.from(names);
+  },
+
+  getAvailableGoalies() {
+    const goalies = new Set();
+    const goalMarkers = this.getSeasonMarkers()[1] || [];
+    goalMarkers.forEach(marker => {
+      if (marker.player) goalies.add(marker.player);
+    });
+    const goaliesFromMarkers = new Set(goalies);
+    Object.entries(this.getSeasonTimeData()).forEach(([key, goalieCounts]) => {
+      const buttonIndex = Number(String(key).split('_')[1]);
+      const isLegacyGoalieBucket = buttonIndex >= 4;
+      const mayBeGoalieOnlyData = goaliesFromMarkers.size === 0;
+      if (!isLegacyGoalieBucket && !mayBeGoalieOnlyData) return;
       Object.keys(goalieCounts || {}).forEach(goalie => goalies.add(goalie));
     });
+    if (goalies.size === 0) {
+      (App.data.selectedPlayers || []).forEach(player => {
+        if (player.name) goalies.add(player.name);
+      });
+    }
     return Array.from(goalies).filter(Boolean).sort();
   },
 
@@ -90,7 +121,8 @@ App.seasonMap = {
     const timeData = this.getSeasonTimeData();
     document.querySelectorAll("#seasonMapPage .period").forEach(periodEl => {
       periodEl.querySelectorAll(".time-btn").forEach((button, index) => {
-        const key = `${periodEl.dataset.period || "sp1"}_${index}`;
+        const storedPeriod = String(periodEl.dataset.period || "p1").replace(/^sp/, 'p');
+        const key = `${storedPeriod}_${index}`;
         const goalieCounts = timeData[key] || {};
         const value = this.selectedGoalie
           ? Number(goalieCounts[this.selectedGoalie] || 0)
@@ -113,7 +145,7 @@ App.seasonMap = {
       if (!counts.has(marker.player)) counts.set(marker.player, { shots: 0, saves: 0, goals: 0 });
       const entry = counts.get(marker.player);
       entry.shots += 1;
-      if (marker.markerType === "goal" || marker.color === "#c62828") entry.goals += 1;
+      if (App.goalMap?.isGoalMarker?.(marker)) entry.goals += 1;
       else entry.saves += 1;
     });
 

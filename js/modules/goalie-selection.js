@@ -15,6 +15,7 @@ App.playerSelection = {
         if (e.target.matches(".num-input, .name-input")) this.debouncedSave();
       });
       this.render();
+      this.syncSelectionFromRoster();
     }
   },
 
@@ -93,6 +94,14 @@ App.playerSelection = {
     this.saveTimeout = setTimeout(() => this.saveCurrentState(), 250);
   },
 
+  syncSelectionFromRoster() {
+    const selectedGoalies = this.getPlayers()
+      .filter(player => player.active && player.name)
+      .map(player => ({ num: player.number, name: player.name, position: "G" }));
+    App.data.selectedPlayers = selectedGoalies;
+    App.storage.saveSelectedPlayers();
+  },
+
   saveCurrentState(preferredActiveIndex = null) {
     if (!this.container) return;
 
@@ -140,6 +149,10 @@ App.playerSelection = {
 
   handleConfirm() {
     this.saveCurrentState();
+    if (!App.data.selectedPlayers.length) {
+      alert("Select at least one goalie before opening Game Center.");
+      return;
+    }
     App.showPage("stats");
   },
 
@@ -149,8 +162,11 @@ App.playerSelection = {
     App.storage.saveSelectedPlayers();
     AppStorage.removeItem(this.getStorageKey());
     AppStorage.removeItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`);
+    App.goalMap?.reset?.(true);
+    App.goalMap?.setActiveGoalie?.("");
     this.render();
     App.goalMap?.updateActiveGoalieButton?.();
     App.statsTable?.render?.();
+    App.seasonMap?.render?.();
   }
 };
