@@ -87,6 +87,7 @@ App.seasonMap = {
     this.renderMarkers();
     this.renderTimeTracking();
     this.renderStatsTable();
+    window.renderSeasonMomentumGraphic?.();
   },
 
   renderMarkers() {

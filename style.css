@@ -16,6 +16,8 @@
   --sticky-header-height: 56px;
   --ice-top: #833031;
   --ice-bottom: #833031;
+  --half-rink-scale-y: 180%;
+  --half-rink-translate-y: -44%;
   
   /* NEU: Hintergrund für Bilderboxen (Light Mode: Weiß) */
   --img-box-bg: #ffffff;
@@ -570,6 +572,18 @@ th .sort-arrow { font-size: 0.7rem; color: #ddd }
   object-fit: contain; 
   border-radius: 8px; 
 }
+
+.stats-box {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-top: 18px;
+}
+
+.stats-box > div {
+  width: 100%;
+}
 /* Goal Map - Aligned with Season Map layout */
 
 #torbildPage .goal-column {
@@ -625,9 +639,9 @@ th .sort-arrow { font-size: 0.7rem; color: #ddd }
   min-height: 0;
   overflow: visible !important;
   height: auto !important;
-  display: flex;          /* falls nötig, um interne Ausrichtung zu halten */
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
-  visibility: hidden;  /* Hide Time Box in Season Map but keep the space */
 }
 
 /* Mindesthöhe für Torbilder - Goal Map */
@@ -4229,19 +4243,10 @@ body.locked {
 
 .goalie-slot {
   display: grid !important;
-  grid-template-columns: auto 90px minmax(180px, 1fr) 56px auto;
+  grid-template-columns: auto 90px minmax(180px, 1fr) 56px;
   gap: 10px;
   align-items: center;
   border: 1px solid #833031 !important;
-}
-
-.goalie-slot.active-goalie-slot {
-  box-shadow: 0 0 0 2px rgba(131, 48, 49, 0.35);
-}
-
-.goalie-slot .set-active-btn[disabled] {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .goalie-tracking-layout {
@@ -4255,55 +4260,14 @@ body.locked {
 
 .half-rink-box img {
   width: 100%;
-  height: 200% !important;
-  transform: translateY(-50%);
+  height: var(--half-rink-scale-y) !important;
+  transform: translateY(var(--half-rink-translate-y));
   object-fit: fill !important;
 }
 
-.red-only-time-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.red-only-time-box .period {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: auto auto auto;
-  row-gap: 4px;
-  column-gap: 8px;
-}
-
-.red-only-time-box .period.active-period {
-  box-shadow: 0 0 0 2px rgba(127, 0, 0, 0.35);
-}
-
-.red-only-time-box .period-title {
-  grid-column: 1 / -1;
-}
-
-.red-only-time-box .period-buttons.single-row {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.red-only-time-box .period-numbers {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  text-align: center;
-}
-
-.red-only-time-box .period-buttons.single-row .time-btn {
-  background: var(--btn-bottom-bg);
-  color: #000;
-}
-
 .goalie-stats-table {
-  margin-top: 18px;
+  margin-top: 0;
+  width: 100%;
 }
 
 .empty-state-card {
@@ -4320,9 +4284,5 @@ body.locked {
 @media (max-width: 900px) {
   .goalie-slot {
     grid-template-columns: auto 72px minmax(140px, 1fr) 48px;
-  }
-
-  .goalie-slot .set-active-btn {
-    grid-column: 1 / -1;
   }
 }

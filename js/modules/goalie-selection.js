@@ -9,8 +9,15 @@ App.playerSelection = {
     document.getElementById("resetPlayersBtn")?.addEventListener("click", () => this.reset());
 
     if (this.container) {
-      this.container.addEventListener("click", (e) => this.handleListClick(e));
-      this.container.addEventListener("change", () => this.debouncedSave());
+      this.container.addEventListener("change", (e) => {
+        if (e.target.matches(".player-checkbox")) {
+          const row = e.target.closest("li.goalie-slot");
+          const index = Number(row?.dataset.index);
+          this.saveCurrentState(Number.isNaN(index) ? null : index);
+          return;
+        }
+        this.debouncedSave();
+      });
       this.container.addEventListener("input", (e) => {
         if (e.target.matches(".num-input, .name-input")) this.debouncedSave();
       });
@@ -46,44 +53,18 @@ App.playerSelection = {
     return AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`) || "";
   },
 
-  handleListClick(e) {
-    const row = e.target.closest("li.goalie-slot");
-    if (!row) return;
-
-    const checkbox = row.querySelector(".player-checkbox");
-    const nameInput = row.querySelector(".name-input");
-    const index = Number(row.dataset.index);
-    if (Number.isNaN(index)) return;
-
-    if (e.target.matches(".set-active-btn")) {
-      if (checkbox) checkbox.checked = true;
-      this.saveCurrentState(index);
-      return;
-    }
-
-    if (!e.target.matches("input")) {
-      if (checkbox && nameInput?.value.trim()) {
-        checkbox.checked = true;
-        this.saveCurrentState(index);
-      }
-    }
-  },
-
   render() {
     if (!this.container) return;
 
     const players = this.getPlayers();
-    const activeGoalieName = this.getActiveGoalieNameFromStorage();
 
     this.container.innerHTML = players.map((player, index) => {
-      const isActiveGoalie = player.name && player.name === activeGoalieName;
       return `
-        <li class="goalie-slot${isActiveGoalie ? ' active-goalie-slot' : ''}" data-index="${index}">
+        <li class="goalie-slot" data-index="${index}">
           <input type="checkbox" ${player.active ? 'checked' : ''} class="player-checkbox" aria-label="Select goalie ${index + 1}">
           <input type="text" class="num-input" placeholder="Nr." value="${App.helpers.escapeHtml(player.number)}" data-field="number">
           <input type="text" class="name-input" placeholder="Enter goalie name" value="${App.helpers.escapeHtml(player.name)}" data-field="name">
           <div class="pos-fixed">G</div>
-          <button type="button" class="top-btn set-active-btn"${!player.name.trim() ? ' disabled' : ''}>${isActiveGoalie ? 'Active' : 'Set Active'}</button>
         </li>
       `;
     }).join("");

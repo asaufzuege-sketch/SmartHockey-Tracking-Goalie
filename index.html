@@ -36,6 +36,7 @@
 
   <link rel="stylesheet" href="style.css?v=3.4.0" />
   <link rel="stylesheet" href="season_table_styles.css?v=3.4.0" />
+  <link rel="stylesheet" href="season_map_momentum.css?v=3.4.1" />
 
   <script>
   document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
@@ -151,10 +152,10 @@
           <div class="img-box goal-img-box" id="goalRedBox">
             <img src="Tor Rot.png" alt="Red goal save map" />
           </div>
-          <div class="time-tracking-box red-only-time-box" id="timeTrackingBox">
+          <div class="time-tracking-box" id="timeTrackingBox">
             <div class="period active-period" data-period="p1">
               <div class="period-title">1st Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -165,7 +166,7 @@
             </div>
             <div class="period" data-period="p2">
               <div class="period-title">2nd Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -176,7 +177,7 @@
             </div>
             <div class="period" data-period="p3">
               <div class="period-title">3rd Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -190,7 +191,9 @@
       </div>
 
       <div id="statsScrollContainer">
-        <div id="statsContainer"></div>
+        <div class="img-box stats-box">
+          <div id="statsContainer"></div>
+        </div>
       </div>
     </div>
 
@@ -230,10 +233,10 @@
           <div class="img-box goal-img-box" id="seasonGoalRedBox">
             <img src="Tor Rot.png" alt="Season red goal save map" />
           </div>
-          <div class="time-tracking-box red-only-time-box" id="seasonMapTimeTrackingBox">
+          <div class="time-tracking-box" id="seasonMapTimeTrackingBox">
             <div class="period active-period" data-period="p1">
               <div class="period-title">1st Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -244,7 +247,7 @@
             </div>
             <div class="period" data-period="p2">
               <div class="period-title">2nd Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -255,7 +258,7 @@
             </div>
             <div class="period" data-period="p3">
               <div class="period-title">3rd Period</div>
-              <div class="period-buttons single-row">
+              <div class="period-buttons bottom-row">
                 <button class="time-btn">0</button><button class="time-btn">0</button>
                 <button class="time-btn">0</button><button class="time-btn">0</button>
               </div>
@@ -267,7 +270,10 @@
           </div>
         </div>
       </div>
-      <div id="seasonMapStatsContainer"></div>
+      <div id="seasonMapMomentumContainer"></div>
+      <div class="img-box stats-box">
+        <div id="seasonMapStatsContainer"></div>
+      </div>
     </div>
 
     <div id="seasonPage" class="page" style="display:none;">
@@ -357,6 +363,7 @@
   <script src="js/modules/billing.js?v=3.4.0"></script>
   <script src="js/app.js?v=3.4.0"></script>
   <script src="season_table_ui_patch.js?v=3.4.0"></script>
+  <script src="season_map_momentum.js?v=3.4.1"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>
