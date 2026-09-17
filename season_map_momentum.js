@@ -73,6 +73,17 @@
       y: valueToY(value, maxScale),
       value
     }));
+    const positiveRuns = [];
+    let currentRun = [];
+    points.forEach(point => {
+      if (point.value > 0) {
+        currentRun.push(point);
+        return;
+      }
+      if (currentRun.length) positiveRuns.push(currentRun);
+      currentRun = [];
+    });
+    if (currentRun.length) positiveRuns.push(currentRun);
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -115,10 +126,10 @@
       text(x, 28 + (isMajor ? 22 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
     }
 
-    if (values.some(value => value > 0)) {
-      const pathD = catmullRom2bezier(points.map(point => ({ x: point.x, y: point.y })));
+    positiveRuns.forEach(run => {
+      const pathD = catmullRom2bezier(run.map(point => ({ x: point.x, y: point.y })));
       const fill = document.createElementNS(svgNS, "path");
-      fill.setAttribute("d", `${pathD} L ${points[points.length - 1].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} L ${points[0].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} Z`);
+      fill.setAttribute("d", `${pathD} L ${run[run.length - 1].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} L ${run[0].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} Z`);
       fill.setAttribute("fill", "#f07d7d");
       fill.setAttribute("stroke", "#7a7a7a");
       fill.setAttribute("stroke-width", "0.9");
@@ -133,7 +144,7 @@
       outline.setAttribute("stroke-linejoin", "round");
       outline.setAttribute("stroke-linecap", "round");
       svg.appendChild(outline);
-    }
+    });
 
     points.forEach(point => {
       if (point.value <= 0) return;
