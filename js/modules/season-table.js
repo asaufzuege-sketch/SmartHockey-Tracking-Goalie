@@ -787,7 +787,7 @@ setStickyOffsets() {
       { label: "SO",         key: "shutouts" },         // 7
       { label: "GV",         key: "goalieGoalValue" },  // 8
       { label: "MVP",        key: "mvpRank" },          // 9
-      { label: "MVP P",      key: "mvpPointsRounded" }  // 10
+      { label: "MVP Pts",    key: "mvpPointsRounded" }  // 10
     ];
     goalieHeaders.forEach(def => {
       const th = document.createElement("th");

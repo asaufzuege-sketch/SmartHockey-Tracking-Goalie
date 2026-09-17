@@ -41,17 +41,17 @@
     return d;
   }
 
-  function getBucketValue(timeData, key, selectedGoalie) {
+  function getBucketValue(timeData, key, selectedGoalie, knownGoalies) {
     const legacyKey = key.replace(/^p/, "sp");
     const entry = timeData?.[key] ?? timeData?.[legacyKey];
-    const isGoalieMap = entry
-      && typeof entry === "object"
-      && !Array.isArray(entry)
-      && Object.values(entry).every(value => value === null || ["number", "string"].includes(typeof value));
-    if (isGoalieMap) {
-      return selectedGoalie
-        ? Number(entry[selectedGoalie] || 0)
-        : Object.values(entry).reduce((sum, value) => sum + Number(value || 0), 0);
+    const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
+    if (isGoalieBucket) {
+      if (selectedGoalie) return Number(entry[selectedGoalie] || 0);
+      const keys = Object.keys(entry);
+      const keysToSum = knownGoalies.size
+        ? keys.filter(goalie => knownGoalies.has(goalie))
+        : keys;
+      return keysToSum.reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
     }
     return Number(entry || 0) || 0;
   }
@@ -60,10 +60,11 @@
     const app = globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
+    const knownGoalies = new Set(app?.seasonMap?.getAvailableGoalies?.() || []);
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
-        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie));
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoalies));
       }
     });
     while (values.length < 12) values.push(0);
