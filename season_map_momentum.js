@@ -86,7 +86,7 @@
     if (!container) return;
 
     const values = readValuesFromStorage();
-    if (values.every(value => Number(value || 0) <= 0)) {
+    if (values.every(value => Number(value || 0) === 0)) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }

@@ -928,7 +928,7 @@ setStickyOffsets() {
     };
 
     let displayGoalieRows = goalieRows.slice();
-    if (this.externalGoalieFilter) {
+    if (this.externalGoalieFilter && !this.goalieSortState.key) {
       const ordered = [this.externalGoalieFilter, this.externalComparisonGoalie].filter(Boolean);
       displayGoalieRows.sort((a, b) => ordered.indexOf(a.name) - ordered.indexOf(b.name));
     } else if (!this.goalieSortState.key) {
