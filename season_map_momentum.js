@@ -46,7 +46,13 @@
     const entry = timeData?.[key] ?? timeData?.[legacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
     if (isGoalieBucket) {
-      if (selectedGoalie) return Number(entry[selectedGoalie] || 0);
+      if (selectedGoalie) {
+        const direct = Number(entry[selectedGoalie]);
+        if (Number.isFinite(direct)) return direct;
+        const target = String(selectedGoalie).trim().toLowerCase();
+        const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
+        return Number(entry[alias] || 0);
+      }
       const keys = Object.keys(entry);
       const keysToSum = knownGoalies.size
         ? keys.filter(goalie => knownGoalies.has(goalie))
