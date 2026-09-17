@@ -123,7 +123,9 @@ App.seasonMap = {
     } catch (e) {
       roster = [];
     }
-    roster.forEach(player => addGoalie(player?.name));
+    roster
+      .filter(player => (player?.position || "G") === "G")
+      .forEach(player => addGoalie(player?.name));
     if (byNormalized.size === 0) {
       (App.data.selectedPlayers || []).forEach(player => {
         addGoalie(player.name);
@@ -137,9 +139,8 @@ App.seasonMap = {
     if (!select) return;
     const savedValue = this.resolveGoalieName(this.selectedGoalie);
     const goalies = this.getAvailableGoalies();
-    select.innerHTML = '';
+    select.innerHTML = '<option value="">All Goalies</option>';
     if (goalies.length === 0) {
-      select.innerHTML = '<option value="">No goalies</option>';
       this.selectedGoalie = "";
       return;
     }
@@ -149,13 +150,18 @@ App.seasonMap = {
       option.textContent = goalie;
       select.appendChild(option);
     });
-    select.value = goalies.includes(savedValue) ? savedValue : (goalies[0] || "");
+    select.value = goalies.includes(savedValue) ? savedValue : "";
     this.selectedGoalie = select.value || "";
   },
 
   populateCompareFilter() {
     const select = document.getElementById("seasonMapCompareGoalie");
     if (!select) return;
+    if (!this.selectedGoalie) {
+      select.innerHTML = '<option value="">No comparison</option>';
+      this.comparisonGoalie = "";
+      return;
+    }
     const savedValue = this.resolveGoalieName(this.comparisonGoalie);
     const goalies = this.getAvailableGoalies().filter(goalie => goalie !== this.selectedGoalie);
     select.innerHTML = '<option value="">No comparison</option>';
