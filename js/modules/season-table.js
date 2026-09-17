@@ -1509,13 +1509,10 @@ setStickyOffsets() {
     let rinkCountData = {};
     try {
       const storedRinkData = AppStorage.getItem(`rinkCountData_${teamId}`);
-      const storedLegacyGoalMapData = AppStorage.getItem(`goalMapData_${teamId}`);
-      rinkCountData = storedRinkData
-        ? JSON.parse(storedRinkData)
-        : (storedLegacyGoalMapData ? JSON.parse(storedLegacyGoalMapData) : {});
+      rinkCountData = storedRinkData ? JSON.parse(storedRinkData) : {};
       App.data.rinkCountData = rinkCountData;
     } catch (e) {
-      rinkCountData = App.data.rinkCountData || App.data.goalMapData || {};
+      rinkCountData = App.data.rinkCountData || {};
     }
 
     const snapshot = App.data.goalieExportSnapshot || {};
@@ -1530,7 +1527,7 @@ setStickyOffsets() {
 
       const goalieName = entry.name;
 
-      // --- Delta aus goalMapData berechnen ---
+      // --- Delta aus rinkCountData berechnen ---
       const events = rinkCountData[goalieName] || [];
       // Kumulativer Zähler
       let cumGA = 0;
