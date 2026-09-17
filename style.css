@@ -16,8 +16,8 @@
   --sticky-header-height: 56px;
   --ice-top: #833031;
   --ice-bottom: #833031;
-  --half-rink-scale-y: 180%;
-  --half-rink-translate-y: -44%;
+  --half-rink-aspect-width: 428;
+  --half-rink-aspect-height: 413;
   
   /* NEU: Hintergrund für Bilderboxen (Light Mode: Weiß) */
   --img-box-bg: #ffffff;
@@ -115,7 +115,7 @@ h1 {
 #goalValuePage h1,
 #seasonPage h1,
 #seasonMapPage h1,
-#playerSelectionPage h1 {
+#goalieSelectionPage h1 {
   font-family: "Astroz", "Segoe UI", sans-serif;
   font-size: 1.69em;
   margin: 12px 0 12px 0;
@@ -142,7 +142,7 @@ h1 {
   margin: 6px 0;
 }
 .player-list li span { color: #fff; }
-#playerSelectionPage input[type="checkbox"] {
+#goalieSelectionPage input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: #e3fba7;
@@ -163,13 +163,13 @@ h1 {
 }
 
 /* Aktuelles Team mittig & im Player-Selection-Stil anzeigen */
-#playerSelectionPage .current-team-info {
+#goalieSelectionPage .current-team-info {
   text-align: center;
   margin-top: 10px;
   margin-bottom: 8px;
 }
 
-#playerSelectionPage #currentTeamDisplay {
+#goalieSelectionPage #currentTeamDisplay {
   font-family: "Astroz", "Segoe UI", sans-serif;
   font-size: 1.69em;
   font-weight: 700;
@@ -906,7 +906,7 @@ button,
   align-items: center;
 }
 
-#seasonContainer {
+#seasonMapStatsContainer {
   position: relative;
   overflow-x: scroll !important;  /* scroll instead of auto = ALWAYS visible */
   overflow-y: hidden !important;
@@ -927,24 +927,24 @@ button,
   background: var(--bg-color); /* Opaque background for sticky columns */
 }
 
-#seasonContainer::-webkit-scrollbar {
+#seasonMapStatsContainer::-webkit-scrollbar {
   height: 18px !important;
   background: rgba(0, 0, 0, 0.2) !important;
 }
-#seasonContainer::-webkit-scrollbar-thumb {
+#seasonMapStatsContainer::-webkit-scrollbar-thumb {
   background: #266EFF !important;
   border-radius: 10px !important;
   border: 3px solid rgba(0, 0, 0, 0.1) !important;
 }
-#seasonContainer::-webkit-scrollbar-thumb:hover {
+#seasonMapStatsContainer::-webkit-scrollbar-thumb:hover {
   background: #1E55CC !important;
 }
-#seasonContainer {
+#seasonMapStatsContainer {
   scrollbar-width: auto !important;
   scrollbar-color: #266EFF rgba(0, 0, 0, 0.2) !important;
 }
 
-#seasonPage table {
+#seasonMapStatsContainer table {
   width: 100%;
   margin: 6px auto 10px auto;  /* Tabelle zentrieren */
   min-width: max-content !important;
@@ -953,7 +953,7 @@ button,
   display: table !important;
 }
 
-#seasonPage thead th {
+#seasonMapStatsContainer thead th {
   padding: 6px 4px !important;
   border-bottom: 2px solid #333;
   background: var(--header-bg);
@@ -963,10 +963,10 @@ button,
   text-align: center;
 }
 
-#seasonPage tbody tr:nth-child(odd) { background-color: var(--row-odd); }
-#seasonPage tbody tr:nth-child(even) { background-color: var(--row-even); }
+#seasonMapStatsContainer tbody tr:nth-child(odd) { background-color: var(--row-odd); }
+#seasonMapStatsContainer tbody tr:nth-child(even) { background-color: var(--row-even); }
 
-#seasonPage .total-row td {
+#seasonMapStatsContainer .total-row td {
   background: var(--header-bg) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
@@ -984,7 +984,7 @@ button,
 /* SEASON TABLE - FINAL FIX */
 /* ========================================= */
 
-#seasonContainer {
+#seasonMapStatsContainer {
   position: relative;
   overflow: auto !important;
   display: block !important;
@@ -998,18 +998,18 @@ button,
 }
 
 /* Grüner horizontaler Scrollbar */
-#seasonContainer::-webkit-scrollbar {
+#seasonMapStatsContainer::-webkit-scrollbar {
   height: 16px;
   background: rgba(0, 0, 0, 0.25);
 }
-#seasonContainer::-webkit-scrollbar-thumb {
+#seasonMapStatsContainer::-webkit-scrollbar-thumb {
   background: #266EFF;
   border-radius: 8px;
 }
-#seasonContainer::-webkit-scrollbar-thumb:hover {
+#seasonMapStatsContainer::-webkit-scrollbar-thumb:hover {
   background: #1E55CC;
 }
-#seasonContainer {
+#seasonMapStatsContainer {
   scrollbar-width: auto;
   scrollbar-color: #266EFF rgba(0, 0, 0, 0.25);
 }
@@ -1059,7 +1059,7 @@ button,
   z-index: 1 !important;
 }
 
-/* Table Scroll Container - kein overflow, da #seasonContainer scrollt */
+/* Table Scroll Container - kein overflow, da #seasonMapStatsContainer scrollt */
 .table-scroll {
   width: 100%;
 }
@@ -2354,14 +2354,14 @@ tr[data-player].dragging {
 /* PLAYER SELECTION PAGE - Neues Layout */
 /* ==================== */
 
-#playerSelectionPage .player-list {
+#goalieSelectionPage .player-list {
   list-style: none;
   padding: 0;
   margin: 20px auto;
   max-width: 800px;
 }
 
-#playerSelectionPage .player-list li {
+#goalieSelectionPage .player-list li {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2372,7 +2372,7 @@ tr[data-player].dragging {
 }
 
 /* Checkbox */
-#playerSelectionPage .player-list input[type="checkbox"] {
+#goalieSelectionPage .player-list input[type="checkbox"] {
   width: 20px;
   height: 20px;
   accent-color: #266EFF;
@@ -2380,7 +2380,7 @@ tr[data-player].dragging {
 }
 
 /* Nr. Input - minimal für 2-stellige Zahlen */
-#playerSelectionPage .player-list .num-input {
+#goalieSelectionPage .player-list .num-input {
   width: 45px;
   min-width: 45px;
   max-width: 45px;
@@ -2394,12 +2394,12 @@ tr[data-player].dragging {
   flex: 0 0 45px;
 }
 
-#playerSelectionPage .player-list .num-input::placeholder {
+#goalieSelectionPage .player-list .num-input::placeholder {
   color: #666;
 }
 
 /* Name Input - füllt den Rest */
-#playerSelectionPage .player-list .name-input {
+#goalieSelectionPage .player-list .name-input {
   flex: 1;
   min-width: 0;
   background: #3a3a3a;
@@ -2410,12 +2410,12 @@ tr[data-player].dragging {
   font-size: 0.95rem;
 }
 
-#playerSelectionPage .player-list .name-input::placeholder {
+#goalieSelectionPage .player-list .name-input::placeholder {
   color: #888;
 }
 
 /* Position Select - minimal für "Defense" */
-#playerSelectionPage .player-list .pos-select {
+#goalieSelectionPage .player-list .pos-select {
   width: 60px;
   min-width: 60px;
   max-width: 60px;
@@ -2434,43 +2434,44 @@ tr[data-player].dragging {
   -moz-appearance: none;
 }
 
-#playerSelectionPage .player-list .pos-select:focus {
+#goalieSelectionPage .player-list .pos-select:focus {
   outline: none;
   border-color: #266EFF;
 }
 
 /* Placeholder Farbe wenn nichts ausgewählt */
-#playerSelectionPage .player-list .pos-select:invalid,
-#playerSelectionPage .player-list .pos-select option[value=""] {
+#goalieSelectionPage .player-list .pos-select:invalid,
+#goalieSelectionPage .player-list .pos-select option[value=""] {
   color: #666;
 }
 
 /* Ausgewählte Option in grün */
-#playerSelectionPage .player-list .pos-select:valid {
+#goalieSelectionPage .player-list .pos-select:valid {
   color: #266EFF;
 }
 
-#playerSelectionPage .player-list .pos-select option {
+#goalieSelectionPage .player-list .pos-select option {
   background: #2a2a2a;
   color: #fff;
 }
 
-#playerSelectionPage .player-list .pos-select option:disabled {
+#goalieSelectionPage .player-list .pos-select option:disabled {
   color: #666;
 }
 
 /* Goalie Slots - Green Border */
-#playerSelectionPage .player-list li.goalie-slot {
+#goalieSelectionPage .player-list li.goalie-slot {
   border: 0.15px solid #266EFF;  /* Blue border for branding */
 }
 
 /* Player Slots (non-goalie) - Gray Border */
-#playerSelectionPage .player-list li:not(.goalie-slot) {
+#goalieSelectionPage .player-list li:not(.goalie-slot) {
   border: 0.15px solid #888888;
 }
 
 /* Fixed Position "G" for Goalies */
-#playerSelectionPage .player-list .pos-fixed {
+#goalieSelectionPage .player-list .pos-fixed,
+#goalieSelectionPage .player-list .position-box {
   width: 60px;
   min-width: 60px;
   max-width: 60px;
@@ -2490,34 +2491,34 @@ tr[data-player].dragging {
 }
 
 /* Top Bar Buttons */
-#playerSelectionPage .top-bar {
+#goalieSelectionPage .top-bar {
   display: flex;
   gap: 10px;
   justify-content: center;
   margin-bottom: 20px;
 }
 
-#playerSelectionPage .top-btn.back-btn {
+#goalieSelectionPage .top-btn.back-btn {
   background: #2b2b2b;
   color: #fff;
 }
 
-#playerSelectionPage .top-btn.game-data-btn {
+#goalieSelectionPage .top-btn.game-data-btn {
   background: #2D73C6;
   color: #fff;
 }
 
-#playerSelectionPage .top-btn.game-data-btn:hover {
+#goalieSelectionPage .top-btn.game-data-btn:hover {
   background: #2563A8;
 }
 
-#playerSelectionPage .top-btn.lineup-btn {
+#goalieSelectionPage .top-btn.lineup-btn {
   background: #00B9FF;
   color: #fff;
 }
 
 /* Titel */
-#playerSelectionPage h1 {
+#goalieSelectionPage h1 {
   text-align: center;
   color: #266EFF;
   font-size: 1.8rem;
@@ -2525,7 +2526,7 @@ tr[data-player].dragging {
 }
 
 /* Untertitel */
-#playerSelectionPage .subtitle {
+#goalieSelectionPage .subtitle {
   text-align: center;
   color: #888;
   font-size: 0.95rem;
@@ -3344,8 +3345,8 @@ tr[data-player].dragging {
   overflow: visible !important;
 }
 
-#seasonContainer table,
-#seasonContainer .season-table {
+#seasonMapStatsContainer table,
+#seasonMapStatsContainer .season-table {
   margin: 0 auto !important;
 }
 
@@ -4256,13 +4257,20 @@ body.locked {
 
 .half-rink-box {
   overflow: hidden;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  aspect-ratio: var(--half-rink-aspect-width) / var(--half-rink-aspect-height);
+  flex: 0 1 auto;
 }
 
 .half-rink-box img {
   width: 100%;
-  height: var(--half-rink-scale-y) !important;
-  transform: translateY(var(--half-rink-translate-y));
-  object-fit: fill !important;
+  height: 100% !important;
+  transform: none;
+  object-fit: cover !important;
+  object-position: center bottom;
 }
 
 .goalie-stats-table {

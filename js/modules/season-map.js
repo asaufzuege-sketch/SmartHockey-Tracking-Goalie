@@ -2,8 +2,6 @@ App.seasonMap = {
   selectedGoalie: "",
 
   init() {
-    document.getElementById("exportSeasonMapPageBtn")?.addEventListener("click", () => this.exportAsImage());
-    document.getElementById("resetSeasonMapBtn")?.addEventListener("click", () => this.reset());
     document.getElementById("seasonMapGoalieFilter")?.addEventListener("change", (event) => {
       this.selectedGoalie = event.target.value || "";
       this.render();
@@ -46,6 +44,7 @@ App.seasonMap = {
 
   getAvailableGoalies() {
     const goalies = new Set();
+    Object.keys(App.data.goalieSeasonData || {}).forEach(goalie => goalies.add(goalie));
     const goalMarkers = this.getSeasonMarkers()[1] || [];
     goalMarkers.forEach(marker => {
       if (marker.player) goalies.add(marker.player);
@@ -86,8 +85,11 @@ App.seasonMap = {
     this.populateGoalieFilter();
     this.renderMarkers();
     this.renderTimeTracking();
-    this.renderStatsTable();
     this.renderMomentumGraphic?.();
+    if (App.seasonTable) {
+      App.seasonTable.externalGoalieFilter = this.selectedGoalie || "";
+      App.seasonTable.render();
+    }
   },
 
   renderMarkers() {
@@ -133,73 +135,4 @@ App.seasonMap = {
     });
   },
 
-  renderStatsTable() {
-    const container = document.getElementById("seasonMapStatsContainer");
-    if (!container) return;
-
-    const markers = this.getSeasonMarkers()[0] || [];
-    const counts = new Map();
-
-    markers.forEach(marker => {
-      if (!marker.player) return;
-      if (this.selectedGoalie && marker.player !== this.selectedGoalie) return;
-      if (!counts.has(marker.player)) counts.set(marker.player, { shots: 0, saves: 0, goals: 0 });
-      const entry = counts.get(marker.player);
-      entry.shots += 1;
-      if (App.goalMap?.isGoalMarker?.(marker)) entry.goals += 1;
-      else entry.saves += 1;
-    });
-
-    const rows = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    if (rows.length === 0) {
-      container.innerHTML = `<div class="empty-state-card">No season map data exported yet.</div>`;
-      return;
-    }
-
-    container.innerHTML = `
-      <table class="stats-table goalie-stats-table">
-        <thead>
-          <tr>
-            <th>Goalie</th>
-            <th>Shots</th>
-            <th>Saves</th>
-            <th>Goals</th>
-            <th>Save %</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(([goalieName, values], index) => `
-            <tr class="${index % 2 === 0 ? 'even-row' : 'odd-row'}">
-              <td style="text-align:left;padding-left:12px;"><strong>${App.helpers.escapeHtml(goalieName)}</strong></td>
-              <td>${values.shots}</td>
-              <td>${values.saves}</td>
-              <td>${values.goals}</td>
-              <td>${values.shots ? ((values.saves / values.shots) * 100).toFixed(1) : "0.0"}%</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    `;
-  },
-
-  async exportAsImage() {
-    const node = document.querySelector("#seasonMapPage");
-    if (!node || typeof html2canvas !== "function") return;
-    const canvas = await html2canvas(node, { backgroundColor: null, scale: 2 });
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = `season-map-${new Date().toISOString().slice(0, 10)}.png`;
-    link.click();
-  },
-
-  reset() {
-    if (!confirm("Reset all Season Map data?")) return;
-    const teamId = App.helpers.getCurrentTeamId();
-    AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
-    AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
-    AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
-    AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
-    this.selectedGoalie = "";
-    this.render();
-  }
 };

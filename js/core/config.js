@@ -1,7 +1,7 @@
 const GOALIE_TEAM_ID = 'Goalie';
 
 const App = {
-  version: '3.4.0',
+  version: '3.4.1',
   pages: {},
   data: {
     players: [],
@@ -58,7 +58,6 @@ const App = {
         selection: document.getElementById("goalieSelectionPage"),
         stats: document.getElementById("statsPage"),
         goalValue: document.getElementById("goalValuePage"),
-        season: document.getElementById("seasonPage"),
         seasonMap: document.getElementById("seasonMapPage")
       };
     }
@@ -78,7 +77,6 @@ const App = {
       selection: "Goalie Selection",
       stats: "Game Center",
       goalValue: "Goal Value",
-      season: "Season",
       seasonMap: "Season Map"
     };
     document.title = titles[page] || "SmartHockey Tracking Goalie";
@@ -90,9 +88,6 @@ const App = {
       this.goalMap?.restoreMarkers?.();
       this.goalMap?.renderTimeTracking?.();
       this.statsTable?.render?.();
-    }
-    if (page === "season" && this.seasonTable?.render) {
-      this.seasonTable.render();
     }
     if (page === "goalValue" && this.goalValue?.render) {
       this.goalValue.render();
