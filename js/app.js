@@ -137,7 +137,7 @@ function bindGlobalNavigation() {
   document.getElementById('termsOfServiceBtn')?.addEventListener('click', () => openExternalLink('./terms.html'));
   document.getElementById('rateAppBtn')?.addEventListener('click', () => openExternalLink(RATE_APP_URL));
 
-  const infoMessage = "SmartHockey Tracking Goalie\n\nTap on rink/goal = save (grey).\nLong press on rink/goal = goal (red).\nRink markers count the goalie table. Goal markers are heat-map only.";
+  const infoMessage = "SmartHockey Tracking Goalie\n\nTap on rink = save (grey).\nLong press on rink = goal (red).\nGoal-image markers are visual heat-map only and do not change counted stats.";
   document.getElementById('goalieSelectionInfoBtn')?.addEventListener('click', () => alert(infoMessage));
 }
 

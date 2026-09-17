@@ -1506,17 +1506,16 @@ setStickyOffsets() {
     const teamId = App.helpers.getCurrentTeamId();
 
     // Rink-basierte Count-Daten aus localStorage lesen (persistiert über Seiten-Reload)
-    let goalMapData = {};
+    let rinkCountData = {};
     try {
       const storedRinkData = AppStorage.getItem(`rinkCountData_${teamId}`);
       const storedLegacyGoalMapData = AppStorage.getItem(`goalMapData_${teamId}`);
-      goalMapData = storedRinkData
+      rinkCountData = storedRinkData
         ? JSON.parse(storedRinkData)
         : (storedLegacyGoalMapData ? JSON.parse(storedLegacyGoalMapData) : {});
-      // RAM ebenfalls aktualisieren für Konsistenz
-      App.data.goalMapData = goalMapData;
+      App.data.rinkCountData = rinkCountData;
     } catch (e) {
-      goalMapData = App.data.rinkCountData || App.data.goalMapData || {};
+      rinkCountData = App.data.rinkCountData || App.data.goalMapData || {};
     }
 
     const snapshot = App.data.goalieExportSnapshot || {};
@@ -1532,7 +1531,7 @@ setStickyOffsets() {
       const goalieName = entry.name;
 
       // --- Delta aus goalMapData berechnen ---
-      const events = goalMapData[goalieName] || [];
+      const events = rinkCountData[goalieName] || [];
       // Kumulativer Zähler
       let cumGA = 0;
       let cumSaves = 0;
