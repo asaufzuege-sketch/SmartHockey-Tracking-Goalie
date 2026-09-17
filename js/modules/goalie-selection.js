@@ -10,10 +10,11 @@ App.playerSelection = {
 
     if (this.container) {
       this.container.addEventListener("change", (e) => {
-        if (e.target.matches(".player-checkbox")) {
-          const row = e.target.closest("li.goalie-slot");
-          const index = Number(row?.dataset.index);
-          this.saveCurrentState(Number.isNaN(index) ? null : index);
+        const row = e.target.closest("li.goalie-slot");
+        const checkbox = row?.querySelector(".player-checkbox");
+        const index = Number(row?.dataset.index);
+        if (row && !Number.isNaN(index) && (e.target.matches(".player-checkbox") || checkbox?.checked)) {
+          this.saveCurrentState(index);
           return;
         }
         this.debouncedSave();
