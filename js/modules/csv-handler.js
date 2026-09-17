@@ -135,6 +135,16 @@ App.csvHandler = {
     
     this.downloadCSV(data, filename);
   },
+
+  exportGoalieGameStats() {
+    const rows = App.statsTable?.getRows?.() || [];
+    const data = [["#", "Goalie", "Shots", "Saves", "Goals", "Save %"]];
+    rows.forEach(row => {
+      data.push([row.num || "", row.name, row.shots, row.saves, row.goals, row.savePct]);
+    });
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    this.downloadCSV(data, `goalie_game_center_${timestamp}.csv`);
+  },
   
   exportSeason() {
     const data = [];

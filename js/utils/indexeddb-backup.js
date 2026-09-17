@@ -1,6 +1,6 @@
 // IndexedDB Backup System for SmartHockey Tracking Team Pro
 const DB_NAME = 'SmartHockeyTeamProBackup';
-const PREFIX = 'sPro_';
+const PREFIX = 'sGoalie_';
 
 const IDBBackup = (function() {
   function _openDB() {

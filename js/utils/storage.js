@@ -1,5 +1,5 @@
 // Storage Prefix for this app
-const STORAGE_PREFIX = 'sPro_';
+const STORAGE_PREFIX = 'sGoalie_';
 
 // Storage Utility Functions
 const AppStorage = {

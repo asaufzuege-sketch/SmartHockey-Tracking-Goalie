@@ -4,18 +4,18 @@
   --header-bg: #1E1E1E;
   --row-even: #f0f0f0;
   --row-odd: #e0e0e0;
-  --page-title-start: #266EFF;
-  --page-title-end: #266EFF;
+  --page-title-start: #833031;
+  --page-title-end: #833031;
   --cell-pos-color: #00c06f;
   --cell-neg-color: #ff4c4c;
   --cell-zero-color: #000000;
-  --btn-top-bg: #c8fbc8;
-  --btn-bottom-bg: #ffe7e7;
+  --btn-top-bg: #f0d7d7;
+  --btn-bottom-bg: #e5c0c0;
   --timer-active-color: #005c2f;
   --timer-left-bg: #2A2F36;
   --sticky-header-height: 56px;
-  --ice-top: #00c06f;
-  --ice-bottom: #ff4c4c;
+  --ice-top: #833031;
+  --ice-bottom: #833031;
   
   /* NEU: Hintergrund für Bilderboxen (Light Mode: Weiß) */
   --img-box-bg: #ffffff;
@@ -4103,7 +4103,7 @@ h3.info-title {
 .price-amount {
   font-size: 3rem;
   font-weight: 700;
-  color: #4fc3f7;
+  color: #833031;
 }
 .price-period {
   font-size: 1.2rem;
@@ -4125,7 +4125,7 @@ h3.info-title {
   display: block;
   width: 100%;
   padding: 1rem;
-  background: linear-gradient(135deg, #2563eb, #4fc3f7);
+  background: linear-gradient(135deg, #833031, #a64a4b);
   color: #fff;
   font-size: 1.1rem;
   font-weight: 600;
@@ -4143,7 +4143,7 @@ h3.info-title {
   width: 100%;
   padding: 0.8rem;
   background: transparent;
-  color: #4fc3f7;
+  color: #833031;
   font-size: 0.95rem;
   border: 1px solid rgba(79, 195, 247, 0.3);
   border-radius: 12px;
@@ -4188,4 +4188,133 @@ body.locked {
 .exit-modal-btn.exit-modal-btn--exit {
   background: #c0392b;
   color: #fff;
+}
+
+#goalieSelectionPage h1,
+#statsPage h1,
+#seasonPage h1,
+#seasonMapPage h1,
+#goalValuePage h1 {
+  font-family: "Astroz", "Segoe UI", sans-serif;
+}
+
+#goalieSelectionPage input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #833031;
+}
+
+.top-btn,
+.backup-btn,
+.player-filter-btn,
+.top-btn.export-csv,
+.top-btn.season-highlight,
+.top-btn.export-season,
+#activeGoalieBtn[disabled] {
+  background: #833031;
+  color: #fff;
+}
+
+.top-btn:hover,
+.backup-btn:hover,
+.player-filter-btn:hover,
+.top-btn.export-csv:hover,
+.top-btn.season-highlight:hover,
+.top-btn.export-season:hover {
+  filter: brightness(1.08);
+}
+
+.goalie-only-list {
+  max-width: 860px;
+}
+
+.goalie-slot {
+  display: grid !important;
+  grid-template-columns: auto 90px minmax(180px, 1fr) 56px auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #833031 !important;
+}
+
+.goalie-slot.active-goalie-slot {
+  box-shadow: 0 0 0 2px rgba(131, 48, 49, 0.35);
+}
+
+.goalie-slot .set-active-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.goalie-tracking-layout {
+  margin-top: 12px;
+  align-items: stretch;
+}
+
+.goalie-tracking-layout .field-box,
+.goalie-tracking-layout .goal-img-box {
+  border: 2px solid #833031;
+}
+
+.half-rink-box {
+  overflow: hidden;
+}
+
+.half-rink-box img {
+  width: 100%;
+  height: 200% !important;
+  transform: translateY(-50%);
+  object-fit: fill !important;
+}
+
+.red-only-time-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.red-only-time-box .period {
+  border: 1px solid #833031;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.red-only-time-box .period.active-period {
+  box-shadow: 0 0 0 2px rgba(131, 48, 49, 0.4);
+}
+
+.red-only-time-box .period-buttons.single-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.red-only-time-box .period-buttons.single-row .time-btn {
+  background: #833031;
+  color: #fff;
+}
+
+.goalie-stats-table {
+  margin-top: 18px;
+}
+
+.empty-state-card {
+  margin: 18px auto 0;
+  max-width: 680px;
+  background: var(--header-bg);
+  color: #fff;
+  border: 1px solid #833031;
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .goalie-slot {
+    grid-template-columns: auto 72px minmax(140px, 1fr) 48px;
+  }
+
+  .goalie-slot .set-active-btn {
+    grid-column: 1 / -1;
+  }
 }
