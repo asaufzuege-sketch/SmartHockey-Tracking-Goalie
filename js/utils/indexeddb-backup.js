@@ -1,11 +1,13 @@
-// IndexedDB Backup System for SmartHockey Tracking Team Pro
-const DB_NAME = 'SmartHockeyTeamProBackup';
-const PREFIX = 'sPro_';
+// IndexedDB Backup System for SmartHockey Tracking Goalie
+const DB_NAME = 'SmartHockeyGoalieBackup';
+const LEGACY_DB_NAME = 'SmartHockeyTeamProBackup';
+const PREFIX = 'sGoalie_';
+const LEGACY_PREFIX = 'sPro_';
 
 const IDBBackup = (function() {
-  function _openDB() {
+  function _openDB(name = DB_NAME) {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
+      const req = indexedDB.open(name, 1);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('backup')) {
@@ -77,7 +79,22 @@ const IDBBackup = (function() {
       const db = await _openDB();
       const data = await _get(db, 'fullBackup');
       db.close();
-      return data || null;
+      if (data) return data;
+
+      const legacyDb = await _openDB(LEGACY_DB_NAME);
+      const legacyData = await _get(legacyDb, 'fullBackup');
+      legacyDb.close();
+      if (!legacyData) return null;
+
+      const migrated = {};
+      Object.entries(legacyData).forEach(([key, value]) => {
+        if (key.startsWith(LEGACY_PREFIX)) {
+          migrated[PREFIX + key.slice(LEGACY_PREFIX.length)] = value;
+        } else {
+          migrated[PREFIX + key] = value;
+        }
+      });
+      return migrated;
     } catch (e) {
       console.warn('[IDBBackup] Load failed:', e);
       return null;

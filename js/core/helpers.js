@@ -2,14 +2,8 @@
 
 
 App.helpers = {
-  /**
-   * Get the current team ID from team selection.
-   * Used for team-specific localStorage keys (seasonData, goalValue, etc.).
-   * Reads directly from localStorage for consistency.
-   * @returns {string} Team ID ('team1', 'team2', or 'team3'). Defaults to 'team1' if no team is selected.
-   */
   getCurrentTeamId() {
-    return AppStorage.getItem('currentTeamId') || 'team1';
+    return GOALIE_TEAM_ID;
   },
   
   escapeHtml(s) {

@@ -1,12 +1,12 @@
 {
-  "name": "SmartHockey Tracking 918",
-  "short_name": "SmartHockey",
-  "description": "Hockey Spielerstatistik Tracking App",
+  "name": "SmartHockey Goalie",
+  "short_name": "SmartHockey Goalie",
+  "description": "Goalie-only hockey tracking app for shots, saves, goals against, and season exports",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#1a1a2e",
-  "theme_color": "#2563eb",
+  "theme_color": "#833031",
   "icons": [
     {
       "src": "./icons/icon-48.png",

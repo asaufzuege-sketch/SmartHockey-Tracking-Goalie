@@ -3,7 +3,7 @@
 
 App.seasonTable = {
   container: null,
-  viewMode: "player",
+  viewMode: "goalie",
   sortState: { index: null, asc: true },
   goalieSortState: { key: null, asc: true },
   seasonViewListenersBound: false,
@@ -617,10 +617,10 @@ setStickyOffsets() {
     try {
       const savedMode = AppStorage.getItem(this.getSeasonViewStorageKey());
       if (savedMode === "player" || savedMode === "goalie") {
-        this.viewMode = savedMode;
+        this.viewMode = savedMode === "player" ? "goalie" : "goalie";
       }
     } catch (e) {
-      this.viewMode = "player";
+      this.viewMode = "goalie";
     }
     this.updateSeasonViewToggleUI();
   },
@@ -664,13 +664,7 @@ setStickyOffsets() {
   updateSeasonViewToggleUI() {
     const toggleBtn = document.getElementById("seasonViewToggleBtn");
     if (!toggleBtn) return;
-
-    const isGoalieMode = this.viewMode === "goalie";
-    const targetLabel = isGoalieMode ? "Players" : "Goalies";
-    const targetModeLabel = isGoalieMode ? "Player" : "Goalie";
-    toggleBtn.textContent = targetLabel;
-    toggleBtn.setAttribute("aria-label", `Switch to ${targetModeLabel} stats`);
-    toggleBtn.title = `Switch to ${targetModeLabel} stats`;
+    toggleBtn.textContent = "Goalies";
   },
 
   setupSynchronizedVerticalScroll(scopeElement) {
@@ -1089,7 +1083,7 @@ setStickyOffsets() {
 
   exportFromStats() {
     if (!App.data.selectedPlayers.length) {
-      alert("No players selected.");
+      alert("No goalies selected.");
       return;
     }
 
@@ -1097,6 +1091,7 @@ setStickyOffsets() {
     this.showGoalValuePopup((opponentIndex) => {
       // After Goal Value confirmation, show Goalie Minutes modal
       this.showGoalieMinutesModal(opponentIndex, () => {
+        App.goalMap?.syncCurrentGameToSeasonMap?.();
         // After all modals confirmed, perform the normal export
         this.performExport();
       });
@@ -1415,9 +1410,9 @@ setStickyOffsets() {
       return;
     }
 
-    // Felder dynamisch aufbauen (max. 2 Goalies)
+    // Felder dynamisch aufbauen
     fieldsContainer.innerHTML = "";
-    activeGoalies.slice(0, 2).forEach(goalie => {
+    activeGoalies.forEach(goalie => {
       const row = document.createElement("div");
       row.className = "goalie-minutes-row";
       row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:10px;";

@@ -1,7 +1,7 @@
 {
-  "name": "smarthockey-tracking-team-pro",
+  "name": "smarthockey-tracking-goalie",
   "version": "2.0.0",
-  "description": "SmartHockey Team Tracker Pro - Professional Hockey Team Management",
+  "description": "SmartHockey Tracking Goalie - goalie-only hockey tracking app",
   "main": "index.html",
   "scripts": {
     "cap:sync": "npx cap sync android",

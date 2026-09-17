@@ -20,7 +20,7 @@
   border: none !important;  /* NO black lines between names */
   text-align: center;
 }
-.goal-value-table tbody tr:hover { background: #eef6ff; }
+.goal-value-table tbody tr:hover { background: #f7e9e9; }
 
 .gv-cell {
   cursor: pointer;
