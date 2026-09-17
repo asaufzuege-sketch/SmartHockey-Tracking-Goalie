@@ -53,8 +53,9 @@
   }
 
   function readValuesFromStorage() {
-    const timeData = App.seasonMap?.getSeasonTimeData?.() || {};
-    const selectedGoalie = App.seasonMap?.selectedGoalie || "";
+    const app = globalThis.App;
+    const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
+    const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
