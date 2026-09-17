@@ -128,7 +128,8 @@ App.seasonMap = {
       .forEach(player => addGoalie(player?.name));
     if (byNormalized.size === 0) {
       (App.data.selectedPlayers || []).forEach(player => {
-        addGoalie(player.name);
+        const isGoalie = String(player?.position || "").toUpperCase() === "G" || player?.isGoalie === true;
+        if (isGoalie) addGoalie(player.name);
       });
     }
     return Array.from(byNormalized.values()).sort((a, b) => a.localeCompare(b));
