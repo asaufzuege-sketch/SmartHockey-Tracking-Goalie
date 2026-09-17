@@ -1,0 +1,104 @@
+/* Styles for Goal Value table and inline editors (add into style.css or include separately) */
+
+.goal-value-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 0.95rem;  /* EXACT same as Season Table */
+  margin-top: 6px;
+}
+
+.goal-value-table tbody tr:nth-child(odd) {
+  background: var(--row-odd, #f6f7f9);
+}
+.goal-value-table tbody tr:nth-child(even) {
+  background: var(--row-even, #ffffff);
+}
+
+.goal-value-table td, .goal-value-table th {
+  padding: 8px 10px;
+  border: none !important;  /* NO black lines between names */
+  text-align: center;
+}
+.goal-value-table tbody tr:hover { background: #eef6ff; }
+
+.gv-cell {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.gv-scale {
+  cursor: pointer;
+  color: #fff;
+  background: rgba(0,0,0,0.15);
+  padding: 3px 6px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.inline-editor {
+  padding: 4px 6px;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  width: 64px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Keep parity with existing .even-row/.odd-row classes used elsewhere */
+.goal-value-table .even-row { background: var(--row-even); }
+.goal-value-table .odd-row { background: var(--row-odd); }
+
+/* Goalie Season Table */
+.goalie-table-fixed,
+.goalie-table-scroll {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.goalie-table-fixed {
+  table-layout: fixed;
+  width: calc(var(--w-nr) + var(--w-player) + var(--w-pos)) !important;
+  min-width: calc(var(--w-nr) + var(--w-player) + var(--w-pos)) !important;
+  max-width: calc(var(--w-nr) + var(--w-player) + var(--w-pos)) !important;
+}
+
+.goalie-table-fixed :is(th, td):nth-child(1) {
+  width: var(--w-nr) !important;
+  min-width: var(--w-nr) !important;
+  max-width: var(--w-nr) !important;
+}
+
+.goalie-table-fixed :is(th, td):nth-child(2) {
+  width: var(--w-player) !important;
+  min-width: var(--w-player) !important;
+  max-width: var(--w-player) !important;
+  text-align: left;
+  padding-left: 12px;
+}
+
+.goalie-table-fixed :is(th, td):nth-child(3) {
+  width: var(--w-pos) !important;
+  min-width: var(--w-pos) !important;
+  max-width: var(--w-pos) !important;
+}
+
+.goalie-table-fixed .pos-cell {
+  min-width: var(--w-pos) !important;
+  max-width: var(--w-pos) !important;
+  text-align: center;
+  font-weight: 600;
+}
+
+.goalie-table-scroll {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.goalie-section-separator {
+  background: var(--bg, inherit);
+  border-top: 1px solid var(--border, #555);
+  color: var(--text-muted, #888);
+}
