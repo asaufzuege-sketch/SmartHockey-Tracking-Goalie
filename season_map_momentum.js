@@ -90,6 +90,8 @@
     svg.setAttribute("width", "100%");
     svg.setAttribute("viewBox", `0 0 ${SVG_W} ${SVG_H}`);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Season map momentum chart showing red period totals over game time");
 
     const line = (x1, y1, x2, y2, stroke, width) => {
       const el = document.createElementNS(svgNS, "line");
@@ -174,19 +176,20 @@
     timeBoxObserver.observe(box, { subtree: true, characterData: true, childList: true });
   }
 
-  window.renderSeasonMomentumGraphic = function () {
+  App.seasonMap = App.seasonMap || {};
+  App.seasonMap.renderMomentumGraphic = function () {
     observeTimeBox();
     renderSeasonMomentumGraphic();
   };
 
   window.addEventListener("storage", (event) => {
     if (!event.key || !/seasonMapTimeData/i.test(event.key)) return;
-    window.renderSeasonMomentumGraphic();
+    App.seasonMap?.renderMomentumGraphic?.();
   });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => window.renderSeasonMomentumGraphic());
+    document.addEventListener("DOMContentLoaded", () => App.seasonMap?.renderMomentumGraphic?.());
   } else {
-    window.renderSeasonMomentumGraphic();
+    App.seasonMap?.renderMomentumGraphic?.();
   }
 })();
