@@ -930,7 +930,16 @@ setStickyOffsets() {
     let displayGoalieRows = goalieRows.slice();
     if (this.externalGoalieFilter && !this.goalieSortState.key) {
       const ordered = [this.externalGoalieFilter, this.externalComparisonGoalie].filter(Boolean);
-      displayGoalieRows.sort((a, b) => ordered.indexOf(a.name) - ordered.indexOf(b.name));
+      const orderedNormalized = ordered.map(name => String(name || "").trim().toLowerCase());
+      const getOrderIndex = (name) => orderedNormalized.indexOf(String(name || "").trim().toLowerCase());
+      displayGoalieRows.sort((a, b) => {
+        const ia = getOrderIndex(a.name);
+        const ib = getOrderIndex(b.name);
+        if (ia === -1 && ib === -1) return String(a.name || "").localeCompare(String(b.name || ""));
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
     } else if (!this.goalieSortState.key) {
       displayGoalieRows.sort((a, b) => (b.mvpPointsRounded || 0) - (a.mvpPointsRounded || 0));
     } else {

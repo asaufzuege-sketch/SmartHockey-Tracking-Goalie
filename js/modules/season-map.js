@@ -124,7 +124,7 @@ App.seasonMap = {
       roster = [];
     }
     roster
-      .filter(player => (player?.position || "G") === "G")
+      .filter(player => String(player?.position || "").toUpperCase() === "G")
       .forEach(player => addGoalie(player?.name));
     if (byNormalized.size === 0) {
       (App.data.selectedPlayers || []).forEach(player => {
