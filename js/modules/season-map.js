@@ -117,12 +117,7 @@ App.seasonMap = {
       if (!isLegacyGoalieBucket && !mayBeGoalieOnlyData) return;
       Object.keys(goalieCounts || {}).forEach(addGoalie);
     });
-    let roster = [];
-    try {
-      roster = JSON.parse(AppStorage.getItem(`playerSelectionData_${App.helpers.getCurrentTeamId()}`) || "[]");
-    } catch (e) {
-      roster = [];
-    }
+    const roster = App.helpers.safeJSONParse(`playerSelectionData_${App.helpers.getCurrentTeamId()}`, []) || [];
     roster
       .filter(player => String(player?.position || "").toUpperCase() === "G")
       .forEach(player => addGoalie(player?.name));
