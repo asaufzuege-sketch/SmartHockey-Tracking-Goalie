@@ -1505,16 +1505,18 @@ setStickyOffsets() {
   performGoalieExport(entries, opponentIndex) {
     const teamId = App.helpers.getCurrentTeamId();
 
-    // goalMapData aus localStorage lesen (ist kumulativ und persistiert über Seiten-Reload)
-    // App.data.goalMapData kann nach Reload leer sein → immer localStorage bevorzugen
+    // Rink-basierte Count-Daten aus localStorage lesen (persistiert über Seiten-Reload)
     let goalMapData = {};
     try {
-      const stored = AppStorage.getItem(`goalMapData_${teamId}`);
-      goalMapData = stored ? JSON.parse(stored) : {};
+      const storedRinkData = AppStorage.getItem(`rinkCountData_${teamId}`);
+      const storedLegacyGoalMapData = AppStorage.getItem(`goalMapData_${teamId}`);
+      goalMapData = storedRinkData
+        ? JSON.parse(storedRinkData)
+        : (storedLegacyGoalMapData ? JSON.parse(storedLegacyGoalMapData) : {});
       // RAM ebenfalls aktualisieren für Konsistenz
       App.data.goalMapData = goalMapData;
     } catch (e) {
-      goalMapData = App.data.goalMapData || {};
+      goalMapData = App.data.rinkCountData || App.data.goalMapData || {};
     }
 
     const snapshot = App.data.goalieExportSnapshot || {};

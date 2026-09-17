@@ -4282,9 +4282,19 @@ body.locked {
   grid-column: 1 / -1;
 }
 
-.red-only-time-box .period-buttons.single-row,
+.red-only-time-box .period-buttons.single-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
 .red-only-time-box .period-numbers {
-  display: contents;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  text-align: center;
 }
 
 .red-only-time-box .period-buttons.single-row .time-btn {

@@ -219,9 +219,11 @@ App.goalMap = {
     const teamId = App.helpers.getCurrentTeamId();
     const markers = this.getCurrentMarkersFromDOM();
     const fieldMarkers = markers[0] || [];
+    const goalMarkers = markers[1] || [];
     const goalMapData = {};
+    const rinkCountData = {};
 
-    fieldMarkers.forEach(marker => {
+    goalMarkers.forEach(marker => {
       if (!marker.player) return;
       if (!goalMapData[marker.player]) goalMapData[marker.player] = [];
       goalMapData[marker.player].push(
@@ -231,8 +233,20 @@ App.goalMap = {
       );
     });
 
+    fieldMarkers.forEach(marker => {
+      if (!marker.player) return;
+      if (!rinkCountData[marker.player]) rinkCountData[marker.player] = [];
+      rinkCountData[marker.player].push(
+        this.isGoalMarker(marker)
+          ? { eventType: "goal", workflowType: "conceded", period: marker.period }
+          : { eventType: "opponent-shot", period: marker.period }
+      );
+    });
+
     App.data.goalMapData = goalMapData;
+    App.data.rinkCountData = rinkCountData;
     AppStorage.setItem(`goalMapData_${teamId}`, JSON.stringify(goalMapData));
+    AppStorage.setItem(`rinkCountData_${teamId}`, JSON.stringify(rinkCountData));
   },
 
   isGoalMarker(marker) {
@@ -381,6 +395,7 @@ App.goalMap = {
     this.timeTrackingBox?.querySelectorAll(".time-btn").forEach(button => { button.textContent = "0"; });
     AppStorage.removeItem(`goalMapMarkers_${teamId}`);
     AppStorage.removeItem(`goalMapData_${teamId}`);
+    AppStorage.removeItem(`rinkCountData_${teamId}`);
     AppStorage.removeItem(`timeDataWithPlayers_${teamId}`);
     this.syncGoalMapDataFromMarkers();
     App.statsTable?.render?.();
