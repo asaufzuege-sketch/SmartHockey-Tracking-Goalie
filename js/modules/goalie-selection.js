@@ -65,7 +65,7 @@ App.playerSelection = {
           <input type="checkbox" ${player.active ? 'checked' : ''} class="player-checkbox" aria-label="Select goalie ${index + 1}">
           <input type="text" class="num-input" placeholder="Nr." value="${App.helpers.escapeHtml(player.number)}" data-field="number">
           <input type="text" class="name-input" placeholder="Enter goalie name" value="${App.helpers.escapeHtml(player.name)}" data-field="name">
-          <div class="pos-fixed">G</div>
+          <div class="pos-fixed position-box">G</div>
         </li>
       `;
     }).join("");

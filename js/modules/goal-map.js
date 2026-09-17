@@ -84,13 +84,12 @@ App.goalMap = {
 
       const getPosFromEvent = (event) => {
         const point = event.changedTouches?.[0] || event.touches?.[0] || event;
-        const rect = img.getBoundingClientRect();
-        if (!rect.width || !rect.height) return null;
-
-        const xPct = ((point.clientX - rect.left) / rect.width) * 100;
-        const yPct = ((point.clientY - rect.top) / rect.height) * 100;
-        if (xPct < 0 || xPct > 100 || yPct < 0 || yPct > 100) return null;
-        return { xPct, yPct };
+        return App.markerHandler.getImagePercentFromClientPoint(
+          box,
+          img,
+          point.clientX,
+          point.clientY
+        );
       };
 
       const clearPress = () => {

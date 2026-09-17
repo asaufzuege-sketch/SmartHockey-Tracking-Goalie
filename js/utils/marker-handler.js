@@ -97,6 +97,64 @@ App.markerHandler = {
       return fallback;
     }
   },
+
+  getCropRect(container) {
+    if (!container?.dataset) return null;
+    const left = parseFloat(container.dataset.cropLeft || "0");
+    const top = parseFloat(container.dataset.cropTop || "0");
+    const width = parseFloat(container.dataset.cropWidth || "100");
+    const height = parseFloat(container.dataset.cropHeight || "100");
+    if (![left, top, width, height].every(Number.isFinite)) return null;
+    if (left === 0 && top === 0 && width === 100 && height === 100) return null;
+    if (width <= 0 || height <= 0) return null;
+    return { left, top, width, height };
+  },
+
+  getImagePercentFromClientPoint(container, img, clientX, clientY) {
+    const crop = this.getCropRect(container);
+    const rect = crop
+      ? container?.getBoundingClientRect?.()
+      : (this.computeRenderedImageRect(img) || img?.getBoundingClientRect?.());
+
+    if (!rect?.width || !rect?.height) return null;
+
+    const xPctVisible = ((clientX - rect.left) / rect.width) * 100;
+    const yPctVisible = ((clientY - rect.top) / rect.height) * 100;
+    if (xPctVisible < 0 || xPctVisible > 100 || yPctVisible < 0 || yPctVisible > 100) return null;
+
+    if (!crop) {
+      return { xPct: xPctVisible, yPct: yPctVisible };
+    }
+
+    return {
+      xPct: crop.left + (xPctVisible / 100) * crop.width,
+      yPct: crop.top + (yPctVisible / 100) * crop.height
+    };
+  },
+
+  getContainerPercentFromImagePercent(container, img, xPctImage, yPctImage) {
+    const crop = this.getCropRect(container);
+    if (crop) {
+      return {
+        xPct: ((xPctImage - crop.left) / crop.width) * 100,
+        yPct: ((yPctImage - crop.top) / crop.height) * 100,
+        valid: true
+      };
+    }
+
+    const rendered = this.computeRenderedImageRect(img);
+    const containerRect = container?.getBoundingClientRect?.();
+    if (!rendered?.valid || !containerRect?.width || !containerRect?.height) return null;
+
+    const absoluteX = rendered.x + (xPctImage / 100) * rendered.width;
+    const absoluteY = rendered.y + (yPctImage / 100) * rendered.height;
+
+    return {
+      xPct: ((absoluteX - containerRect.left) / containerRect.width) * 100,
+      yPct: ((absoluteY - containerRect.top) / containerRect.height) * 100,
+      valid: true
+    };
+  },
   
   /**
    * Marker mit Prozent-Koordinaten erstellen.
@@ -123,22 +181,11 @@ App.markerHandler = {
     // This fixes the issue where markers were misaligned on desktop with object-fit: contain
     const img = container.querySelector('img');
     if (img) {
-      const rendered = this.computeRenderedImageRect(img);
-      const containerRect = container.getBoundingClientRect();
-      
-      if (rendered && rendered.valid && containerRect.width > 0 && containerRect.height > 0) {
-        // Calculate absolute position based on image-relative percentage
-        const absoluteX = rendered.x + (xPct / 100) * rendered.width;
-        const absoluteY = rendered.y + (yPct / 100) * rendered.height;
-        
-        // Convert to container-relative percentage
-        const containerXPct = ((absoluteX - containerRect.left) / containerRect.width) * 100;
-        const containerYPct = ((absoluteY - containerRect.top) / containerRect.height) * 100;
-        
-        dot.style.left = `${containerXPct}%`;
-        dot.style.top = `${containerYPct}%`;
+      const position = this.getContainerPercentFromImagePercent(container, img, xPct, yPct);
+      if (position?.valid) {
+        dot.style.left = `${position.xPct}%`;
+        dot.style.top = `${position.yPct}%`;
       } else {
-        // Fallback: use image percentages directly (for backwards compatibility)
         dot.style.left = `${xPct}%`;
         dot.style.top = `${yPct}%`;
       }
@@ -182,9 +229,6 @@ App.markerHandler = {
       const img = box.querySelector('img');
       if (!img) return;
       
-      const rendered = this.computeRenderedImageRect(img);
-      const containerRect = box.getBoundingClientRect();
-      
       box.querySelectorAll(".marker-dot").forEach(dot => {
         const xPctImage = parseFloat(dot.dataset.xPctImage);
         const yPctImage = parseFloat(dot.dataset.yPctImage);
@@ -192,20 +236,11 @@ App.markerHandler = {
         // Skip if no image-relative coordinates stored
         if (isNaN(xPctImage) || isNaN(yPctImage)) return;
         
-        // Transform image-relative to container-relative percentages
-        if (rendered && rendered.valid && containerRect.width > 0 && containerRect.height > 0) {
-          // Calculate absolute position based on image-relative percentage
-          const absoluteX = rendered.x + (xPctImage / 100) * rendered.width;
-          const absoluteY = rendered.y + (yPctImage / 100) * rendered.height;
-          
-          // Convert to container-relative percentage
-          const containerXPct = ((absoluteX - containerRect.left) / containerRect.width) * 100;
-          const containerYPct = ((absoluteY - containerRect.top) / containerRect.height) * 100;
-          
-          dot.style.left = `${containerXPct}%`;
-          dot.style.top = `${containerYPct}%`;
+        const position = this.getContainerPercentFromImagePercent(box, img, xPctImage, yPctImage);
+        if (position?.valid) {
+          dot.style.left = `${position.xPct}%`;
+          dot.style.top = `${position.yPct}%`;
         } else {
-          // Fallback: use image percentages directly
           dot.style.left = `${xPctImage}%`;
           dot.style.top = `${yPctImage}%`;
         }

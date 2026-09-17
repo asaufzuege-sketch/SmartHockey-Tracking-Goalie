@@ -3,6 +3,7 @@
 
 App.seasonTable = {
   container: null,
+  externalGoalieFilter: "",
   viewMode: "goalie",
   sortState: { index: null, asc: true },
   goalieSortState: { key: null, asc: true },
@@ -18,7 +19,7 @@ App.seasonTable = {
   DOUBLE_TAP_DELAY: 300,
 
   init() {
-    this.container = document.getElementById("seasonContainer");
+    this.container = document.getElementById("seasonMapStatsContainer");
     
     // Cache row colors from CSS for better performance
     this.rowColors = {
@@ -34,11 +35,11 @@ App.seasonTable = {
       this.exportFromStats();
     });
 
-    document.getElementById("exportSeasonBtn")?.addEventListener("click", () => {
+    document.getElementById("exportSeasonMapPageBtn")?.addEventListener("click", () => {
       this.exportCSV();
     });
 
-    document.getElementById("resetSeasonBtn")?.addEventListener("click", () => {
+    document.getElementById("resetSeasonMapBtn")?.addEventListener("click", () => {
       this.reset();
     });
     
@@ -84,6 +85,7 @@ setStickyOffsets() {
   },
 
   render() {
+    this.container = document.getElementById("seasonMapStatsContainer");
     if (!this.container) return;
     
     // WICHTIG: Verhindere rekursive render() Aufrufe
@@ -613,15 +615,7 @@ setStickyOffsets() {
   },
 
   loadViewMode() {
-    this.viewMode = "player";
-    try {
-      const savedMode = AppStorage.getItem(this.getSeasonViewStorageKey());
-      if (savedMode === "player" || savedMode === "goalie") {
-        this.viewMode = savedMode === "player" ? "goalie" : "goalie";
-      }
-    } catch (e) {
-      this.viewMode = "goalie";
-    }
+    this.viewMode = "goalie";
     this.updateSeasonViewToggleUI();
   },
 
@@ -734,7 +728,9 @@ setStickyOffsets() {
   renderGoalieTable(fixedContainer, tableScrollWrapper, options = {}) {
     const withSeparator = options.withSeparator !== false;
     const goalieSeasonData = App.data.goalieSeasonData || {};
-    const goalieNames = Object.keys(goalieSeasonData);
+    const goalieNames = Object.keys(goalieSeasonData).filter(name =>
+      !this.externalGoalieFilter || name === this.externalGoalieFilter
+    );
 
     if (withSeparator) {
       // --- Dezente Trennung (ohne "GOALIES"-Text) ---
@@ -1001,7 +997,9 @@ setStickyOffsets() {
       const emptyScrollTr = document.createElement("tr");
       const emptyScrollTd = document.createElement("td");
       emptyScrollTd.colSpan = 11;
-      emptyScrollTd.textContent = "Keine Goalie-Saison-Daten";
+      emptyScrollTd.textContent = this.externalGoalieFilter
+        ? "No season data for this goalie"
+        : "No goalie season data exported yet";
       emptyScrollTd.style.textAlign = "center";
       emptyScrollTd.style.opacity = "0.5";
       emptyScrollTr.appendChild(emptyScrollTd);
@@ -1675,173 +1673,142 @@ setStickyOffsets() {
     }
 
     if (typeof App.showPage === "function") {
-      App.showPage("season");
+      App.showPage("seasonMap");
     }
     this.render();
   },
 
   exportCSV() {
     try {
-      const names = Object.keys(App.data.seasonData || {});
+      const goalieSeasonData = App.data.goalieSeasonData || {};
+      const names = Object.keys(goalieSeasonData).filter(name =>
+        !this.externalGoalieFilter || name === this.externalGoalieFilter
+      );
       if (!names.length) {
-        alert("Keine Season-Daten vorhanden.");
+        alert("No goalie season data available.");
         return;
       }
 
       const header = [
-        "Nr","Player","Pos.","Games",
-        "Goals","Assists","Points","+/-","Ø +/-",
-        "Shots","Shots/Game","Shots %","Goals/Game","Points/Game",
-        "Penalty","Goal Value","FaceOffs","FaceOffs Won","FaceOffs %",
-        "SF/min","SA/min","Shot Share %","Time",
+        "Nr","Goalie","Pos.","Games","MIN",
+        "GA","SA","SV","Sv%","GAA","SO","Goal Value",
         "MVP","MVP Points"
       ];
       const rows = [header];
-      const tempRows = [];
-      const sums = {
-        games: 0, goals: 0, assists: 0, points: 0, plusMinus: 0,
-        shots: 0, penalty: 0, faceOffs: 0, faceOffsWon: 0, timeSeconds: 0,
-        shotsForOnIce: 0, shotsAgainstOnIce: 0
+      const totals = { games: 0, minutes: 0, ga: 0, sa: 0 };
+      const goalieRows = [];
+      const STAR_MIN = 0.5;
+      const STAR_MAX = 5.0;
+      const INV = STAR_MIN + STAR_MAX;
+      const MVP_W_SV = 1.0;
+      const MVP_FULL_MIN = 150;
+      const MVP_W_GV = 1.5;
+      const MVP_W_MIN = 0.02;
+      const bottom = App.goalValue?.getBottom?.() || [];
+
+      const formatMinutes = (decimalMinutes) => {
+        if (!decimalMinutes) return "0:00";
+        const totalSeconds = Math.round(decimalMinutes * 60);
+        const mm = Math.floor(totalSeconds / 60);
+        const ss = String(totalSeconds % 60).padStart(2, "0");
+        return `${mm}:${ss}`;
       };
 
       names.forEach(name => {
-        const d = App.data.seasonData[name] || {};
-        
-        const games = Number(d.games || 0);
-        const goals = Number(d.goals || 0);
-        const assists = Number(d.assists || 0);
-        const points = goals + assists;
-        const plusMinus = Number(d.plusMinus || 0);
-        const shots = Number(d.shots || 0);
-        const penalty = Number(d.penaltys || 0);
-        const faceOffs = Number(d.faceOffs || 0);
-        const faceOffsWon = Number(d.faceOffsWon || 0);
-        const faceOffsPercent = faceOffs ? Math.round((faceOffsWon / faceOffs) * 100) : 0;
-        const timeSeconds = Number(d.timeSeconds || 0);
-        const possessionStats = App.helpers.getSeasonPossessionStats(d);
+        const gsd = goalieSeasonData[name] || {};
+        const games = Number(gsd.games || 0);
+        const minutes = Number(gsd.minutes || 0);
+        const ga = Number(gsd.goalsAgainst || 0);
+        const sa = Number(gsd.shotsAgainst || 0);
+        const sv = sa - ga;
+        const svPctValue = sa > 0 ? (sv / sa) * 100 : 0;
+        const gaaValue = minutes > 0 ? (ga * 60 / minutes) : null;
+        const shutouts = Number(gsd.shutouts || 0);
+        const goalieGoalValue = (gsd.gvAgainst || []).reduce((sum, goalsAgainst, index) => {
+          const weight = Number(bottom[index] || 0);
+          if (weight <= 0) return sum;
+          return sum + Number(goalsAgainst || 0) * (INV - weight);
+        }, 0);
+        const confidence = Math.min(1, minutes / MVP_FULL_MIN);
+        const gvPerGame = games > 0 ? goalieGoalValue / games : 0;
+        const mvpPointsRounded = Number(Math.max(0,
+          (svPctValue * MVP_W_SV * confidence) - (gvPerGame * MVP_W_GV) + (minutes * MVP_W_MIN)
+        ).toFixed(1));
 
-        const avgPlusMinus = games ? (plusMinus / games) : 0;
-        const shotsPerGame = games ? (shots / games) : 0;
-        const goalsPerGame = games ? (goals / games) : 0;
-        const pointsPerGame = games ? (points / games) : 0;
-        const shotsPercent = shots ? Math.round((goals / shots) * 100) : 0;
+        totals.games += games;
+        totals.minutes += minutes;
+        totals.ga += ga;
+        totals.sa += sa;
 
-        let goalValue = Number(d.goalValue || 0);
-        try {
-          if (App.goalValue && typeof App.goalValue.computeValueForPlayer === "function") {
-            goalValue = Number(App.goalValue.computeValueForPlayer(name) ?? Number(d.goalValue || 0));
-          }
-        } catch {
-          goalValue = Number(d.goalValue || 0);
-        }
-
-        const mvpPointsNum = App.helpers.calculateSeasonMVPPoints(name, d);
-        const mvpPointsRounded = Number(mvpPointsNum.toFixed(1));
-
-        const row = [
-          d.num || "",
+        goalieRows.push({
+          num: gsd.num || "",
           name,
-          this.getPlayerPosition(name),
           games,
-          goals,
-          assists,
-          points,
-          plusMinus,
-          avgPlusMinus.toFixed(1),
-          shots,
-          shotsPerGame.toFixed(1),
-          String(shotsPercent) + "%",
-          goalsPerGame.toFixed(1),
-          pointsPerGame.toFixed(1),
-          penalty,
-          goalValue,
-          faceOffs,
-          faceOffsWon,
-          String(faceOffsPercent) + "%",
-          possessionStats.sfPerMinDisplay,
-          possessionStats.saPerMinDisplay,
-          possessionStats.shotShareDisplay,
-          App.helpers.formatTimeMMSS(timeSeconds),
-          "",
+          minutes,
+          minutesDisplay: formatMinutes(minutes),
+          ga,
+          sa,
+          sv,
+          svPctDisplay: sa > 0 ? `${svPctValue.toFixed(1)}%` : "–",
+          gaaDisplay: gaaValue !== null ? gaaValue.toFixed(2) : "–",
+          shutouts,
+          goalieGoalValue: Number(goalieGoalValue.toFixed(2)),
           mvpPointsRounded
-        ];
-        tempRows.push(row);
-
-        sums.games += games;
-        sums.goals += goals;
-        sums.assists += assists;
-        sums.points += points;
-        sums.plusMinus += plusMinus;
-        sums.shots += shots;
-        sums.penalty += penalty;
-        sums.faceOffs += faceOffs;
-        sums.faceOffsWon += faceOffsWon;
-        sums.timeSeconds += timeSeconds;
-        sums.shotsForOnIce += possessionStats.shotsForOnIce;
-        sums.shotsAgainstOnIce += possessionStats.shotsAgainstOnIce;
+        });
       });
 
-      const MVP_POINTS_IDX = header.indexOf("MVP Points");
-      const MVP_IDX = header.indexOf("MVP");
-      const allPoints = tempRows.map(r => Number(r[MVP_POINTS_IDX]) || 0);
-      const sortedDescUnique = [...new Set(allPoints.slice().sort((a,b) => b - a))];
+      const sortedDescUnique = [...new Set(goalieRows.map(row => row.mvpPointsRounded).sort((a, b) => b - a))];
 
       function rankFor(val) {
         const i = sortedDescUnique.indexOf(val);
         return i === -1 ? "" : (i + 1);
       }
 
-      tempRows.forEach(r => {
-        r[MVP_IDX] = rankFor(Number(r[MVP_POINTS_IDX]) || 0);
+      goalieRows.forEach(row => {
+        rows.push([
+          row.num,
+          row.name,
+          "G",
+          row.games,
+          row.minutesDisplay,
+          row.ga,
+          row.sa,
+          row.sv,
+          row.svPctDisplay,
+          row.gaaDisplay,
+          row.shutouts,
+          row.goalieGoalValue,
+          rankFor(row.mvpPointsRounded),
+          row.mvpPointsRounded.toFixed(1)
+        ]);
       });
 
-      rows.push(...tempRows);
-
-      const count = tempRows.length;
-      if (count) {
-        const avgShotsPercent = sums.shots ? Math.round((sums.goals / sums.shots) * 100) : 0;
-        const avgFacePercent = sums.faceOffs ? Math.round((sums.faceOffsWon / sums.faceOffs) * 100) : 0;
-        const avgTime = Math.round(sums.timeSeconds / count);
-        const totalPossessionStats = App.helpers.getSeasonPossessionStats({
-          shotsForOnIce: sums.shotsForOnIce,
-          shotsAgainstOnIce: sums.shotsAgainstOnIce,
-          timeSeconds: sums.timeSeconds
-        });
-
-        const totalRow = [
-          "", "Total Ø", "",
-          (sums.games / count).toFixed(1),
-          (sums.goals / count).toFixed(1),
-          (sums.assists / count).toFixed(1),
-          (sums.points / count).toFixed(1),
-          (sums.plusMinus / count).toFixed(1),
-          (sums.plusMinus / count).toFixed(1),
-          (sums.shots / count).toFixed(1),
-          ((sums.shots / count) / ((sums.games / count) || 1)).toFixed(1),
-          String(avgShotsPercent) + "%",
-          ((sums.goals / count) / ((sums.games / count) || 1)).toFixed(1),
-          ((sums.points / count) / ((sums.games / count) || 1)).toFixed(1),
-          (sums.penalty / count).toFixed(1),
-          "",
-          (sums.faceOffs / count).toFixed(1),
-          (sums.faceOffsWon / count).toFixed(1),
-          String(avgFacePercent) + "%",
-          totalPossessionStats.sfPerMinDisplay,
-          totalPossessionStats.saPerMinDisplay,
-          totalPossessionStats.shotShareDisplay,
-          App.helpers.formatTimeMMSS(avgTime),
-          "",
-          ""
-        ];
-        rows.push(totalRow);
-      }
+      const totalSA = totals.sa;
+      const totalGA = totals.ga;
+      const totalSV = totalSA - totalGA;
+      rows.push([
+        "",
+        "Total",
+        "",
+        "",
+        formatMinutes(totals.minutes),
+        totalGA,
+        totalSA,
+        totalSV,
+        totalSA > 0 ? `Ø ${((totalSV / totalSA) * 100).toFixed(1)}%` : "–",
+        totals.minutes > 0 ? `Ø ${(totalGA * 60 / totals.minutes).toFixed(2)}` : "–",
+        "",
+        "",
+        "",
+        ""
+      ]);
 
       const escCsv = v => { const s = String(v ?? ""); return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
       const csv = '\uFEFF' + 'sep=,\r\n' + rows.map(r => r.map(escCsv).join(",")).join("\r\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "season.csv";
+      a.download = "goalie-season.csv";
       a.click();
       URL.revokeObjectURL(a.href);
       alert("Season CSV exported.");
@@ -1852,7 +1819,7 @@ setStickyOffsets() {
   },
 
   reset() {
-    if (!confirm("Delete Season data?")) return;
+    if (!confirm("Delete Season data and Season Map markers?")) return;
 
     App.data.seasonData = {};
     App.data.goalieSeasonData = {};
@@ -1861,7 +1828,16 @@ setStickyOffsets() {
     AppStorage.removeItem(`seasonData_${teamId}`);
     AppStorage.removeItem(`goalieSeasonData_${teamId}`);
     AppStorage.removeItem(`goalieExportSnapshot_${teamId}`);
-    this.render();
+    AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
+    AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
+    AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
+    AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
+    if (App.seasonMap) {
+      App.seasonMap.selectedGoalie = "";
+      App.seasonMap.render();
+    } else {
+      this.render();
+    }
     alert("Season data deleted.");
   },
   

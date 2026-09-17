@@ -125,10 +125,8 @@ function importBackup() {
 function bindGlobalNavigation() {
   document.getElementById("selectGoaliesBtn")?.addEventListener("click", () => App.showPage("selection"));
   document.getElementById("goalValueBtn")?.addEventListener("click", () => App.showPage("goalValue"));
-  document.getElementById("seasonBtn")?.addEventListener("click", () => App.showPage("season"));
   document.getElementById("seasonMapBtn")?.addEventListener("click", () => App.showPage("seasonMap"));
   document.getElementById("backFromGoalValueBtn")?.addEventListener("click", () => App.showPage("stats"));
-  document.getElementById("backToStatsFromSeasonBtn")?.addEventListener("click", () => App.showPage("stats"));
   document.getElementById("backToStatsFromSeasonMapBtn")?.addEventListener("click", () => App.showPage("stats"));
 
   document.getElementById('downloadBackupBtn')?.addEventListener('click', exportBackup);
@@ -148,7 +146,6 @@ async function initializeApp() {
     selection: document.getElementById("goalieSelectionPage"),
     stats: document.getElementById("statsPage"),
     goalValue: document.getElementById("goalValuePage"),
-    season: document.getElementById("seasonPage"),
     seasonMap: document.getElementById("seasonMapPage")
   };
 
