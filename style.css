@@ -2063,6 +2063,9 @@ button,
   font-size: 0.72rem;
   background: #3a3a3a;
   color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .app-link-btn:hover {
@@ -2509,6 +2512,13 @@ tr[data-player].dragging {
 
 /* Untertitel */
 #playerSelectionPage .subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+#goalieSelectionPage .subtitle {
   text-align: center;
   color: #888;
   font-size: 0.95rem;
@@ -4204,24 +4214,13 @@ body.locked {
   accent-color: #833031;
 }
 
-.top-btn,
-.backup-btn,
-.player-filter-btn,
-.top-btn.export-csv,
-.top-btn.season-highlight,
-.top-btn.export-season,
-#activeGoalieBtn[disabled] {
-  background: #833031;
+#selectGoaliesBtn {
+  background: #1E2A44;
   color: #fff;
 }
 
-.top-btn:hover,
-.backup-btn:hover,
-.player-filter-btn:hover,
-.top-btn.export-csv:hover,
-.top-btn.season-highlight:hover,
-.top-btn.export-season:hover {
-  filter: brightness(1.08);
+#selectGoaliesBtn:hover {
+  filter: brightness(1.1);
 }
 
 .goalie-only-list {
@@ -4250,11 +4249,6 @@ body.locked {
   align-items: stretch;
 }
 
-.goalie-tracking-layout .field-box,
-.goalie-tracking-layout .goal-img-box {
-  border: 2px solid #833031;
-}
-
 .half-rink-box {
   overflow: hidden;
 }
@@ -4267,31 +4261,35 @@ body.locked {
 }
 
 .red-only-time-box {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 12px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .red-only-time-box .period {
-  border: 1px solid #833031;
-  border-radius: 12px;
-  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto auto auto;
+  row-gap: 4px;
+  column-gap: 8px;
 }
 
 .red-only-time-box .period.active-period {
-  box-shadow: 0 0 0 2px rgba(131, 48, 49, 0.4);
+  box-shadow: 0 0 0 2px rgba(127, 0, 0, 0.35);
 }
 
-.red-only-time-box .period-buttons.single-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+.red-only-time-box .period-title {
+  grid-column: 1 / -1;
+}
+
+.red-only-time-box .period-buttons.single-row,
+.red-only-time-box .period-numbers {
+  display: contents;
 }
 
 .red-only-time-box .period-buttons.single-row .time-btn {
-  background: #833031;
-  color: #fff;
+  background: var(--btn-bottom-bg);
+  color: #000;
 }
 
 .goalie-stats-table {

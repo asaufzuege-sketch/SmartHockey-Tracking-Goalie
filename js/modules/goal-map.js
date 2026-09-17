@@ -218,10 +218,10 @@ App.goalMap = {
   syncGoalMapDataFromMarkers() {
     const teamId = App.helpers.getCurrentTeamId();
     const markers = this.getCurrentMarkersFromDOM();
-    const goalMarkers = markers[1] || [];
+    const fieldMarkers = markers[0] || [];
     const goalMapData = {};
 
-    goalMarkers.forEach(marker => {
+    fieldMarkers.forEach(marker => {
       if (!marker.player) return;
       if (!goalMapData[marker.player]) goalMapData[marker.player] = [];
       goalMapData[marker.player].push(
