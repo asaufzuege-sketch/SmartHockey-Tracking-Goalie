@@ -10,6 +10,7 @@ App.seasonMap = {
         this.comparisonGoalie = "";
       }
       this.persistFilters();
+      this.renderFieldHeader();
       this.render();
     });
     document.getElementById("seasonMapCompareGoalie")?.addEventListener("change", (event) => {
@@ -18,6 +19,7 @@ App.seasonMap = {
         this.comparisonGoalie = "";
       }
       this.persistFilters();
+      this.renderFieldHeader();
       this.render();
     });
   },
