@@ -10,9 +10,10 @@
   <link rel="canonical" href="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie" />
   <title>SmartHockey Tracking Goalie</title>
 
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="manifest.json?v=3.4.3" />
   <meta name="theme-color" content="#5F0FFF" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="SmartHockey Goalie" />
 
@@ -20,23 +21,23 @@
   <meta property="og:description" content="Goalie-only hockey tracking with live shot maps, save maps, season exports, and goalie stats." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie" />
-  <meta property="og:image" content="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie/icons/icon-512.png" />
+  <meta property="og:image" content="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie/icons/icon-512.png?v=3.4.3" />
   <meta property="og:locale" content="en_US" />
   <meta property="og:site_name" content="SmartHockey Products" />
 
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SmartHockey Tracking Goalie" />
   <meta name="twitter:description" content="Goalie-only hockey tracking with live shot maps, save maps, and season exports." />
-  <meta name="twitter:image" content="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie/icons/icon-512.png" />
+  <meta name="twitter:image" content="https://asaufzuege-sketch.github.io/SmartHockey-Tracking-Goalie/icons/icon-512.png?v=3.4.3" />
 
-  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon-48.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="icons/icon-152.png" />
-  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/icon-48.png?v=3.4.3" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=3.4.3" />
+  <link rel="apple-touch-icon" href="icons/icon-152.png?v=3.4.3" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png?v=3.4.3" />
 
-  <link rel="stylesheet" href="style.css?v=3.4.2" />
-  <link rel="stylesheet" href="season_table_styles.css?v=3.4.2" />
-  <link rel="stylesheet" href="season_map_momentum.css?v=3.4.2" />
+  <link rel="stylesheet" href="style.css?v=3.4.3" />
+  <link rel="stylesheet" href="season_table_styles.css?v=3.4.3" />
+  <link rel="stylesheet" href="season_map_momentum.css?v=3.4.3" />
 
   <script>
   document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
@@ -75,7 +76,7 @@
 <body>
   <div id="subscriptionPaywall" style="display:none;">
     <div class="paywall-container">
-      <img src="icons/icon-192.png" alt="SmartHockey Goalie" class="paywall-logo">
+      <img src="icons/icon-192.png?v=3.4.3" alt="SmartHockey Goalie" class="paywall-logo">
       <h1>SmartHockey Tracking Goalie</h1>
       <p class="paywall-subtitle">Goalie Tracking &amp; Shot Mapping</p>
       <div class="paywall-price">
@@ -113,7 +114,7 @@
         </div>
       </div>
       <h1>GOALIE SELECTION</h1>
-      <p class="subtitle">Select the goalies to display in the table</p>
+      <p class="subtitle">Select the active goalie for the current game</p>
       <ul id="playerList" class="player-list goalie-only-list"></ul>
       <div class="backup-buttons">
         <button id="downloadBackupBtn" class="backup-btn">📥 Download Backup</button>
@@ -143,7 +144,7 @@
       <h1>GAME CENTER</h1>
       <div class="torbild-layout goalie-tracking-layout">
         <div class="field-column">
-          <div class="img-box field-box half-rink-box" id="fieldBox" data-crop-left="0" data-crop-top="49.94" data-crop-width="100" data-crop-height="50.06">
+          <div class="img-box field-box half-rink-box" id="fieldBox" data-crop-left="0" data-crop-top="49.8181818182" data-crop-width="100" data-crop-height="50.1818181818">
             <img src="Spielfeld Overlay.png" alt="Half rink shot map" />
           </div>
         </div>
@@ -222,7 +223,7 @@
       <h1>SEASON MAP</h1>
       <div class="torbild-layout goalie-tracking-layout">
         <div class="field-column">
-          <div class="img-box field-box half-rink-box" id="seasonFieldBox" data-crop-left="0" data-crop-top="49.94" data-crop-width="100" data-crop-height="50.06">
+          <div class="img-box field-box half-rink-box" id="seasonFieldBox" data-crop-left="0" data-crop-top="49.8181818182" data-crop-width="100" data-crop-height="50.1818181818">
             <img src="Spielfeld Overlay.png" alt="Season half rink shot map" />
           </div>
         </div>
@@ -299,23 +300,23 @@
     </div>
   </div>
 
-  <script src="js/core/config.js?v=3.4.2"></script>
-  <script src="js/core/helpers.js?v=3.4.2"></script>
-  <script src="js/utils/indexeddb-backup.js?v=3.4.2"></script>
-  <script src="js/utils/storage.js?v=3.4.2"></script>
-  <script src="js/utils/marker-handler.js?v=3.4.2"></script>
-  <script src="js/modules/timer.js?v=3.4.2"></script>
-  <script src="js/modules/csv-handler.js?v=3.4.2"></script>
-  <script src="js/modules/goalie-selection.js?v=3.4.2"></script>
-  <script src="js/modules/stats-table.js?v=3.4.2"></script>
-  <script src="js/modules/season-table.js?v=3.4.2"></script>
-  <script src="js/modules/goal-map.js?v=3.4.2"></script>
-  <script src="js/modules/season-map.js?v=3.4.2"></script>
-  <script src="js/modules/goal-value.js?v=3.4.2"></script>
-  <script src="js/modules/billing.js?v=3.4.2"></script>
-  <script src="js/app.js?v=3.4.2"></script>
-  <script src="season_table_ui_patch.js?v=3.4.2"></script>
-  <script src="season_map_momentum.js?v=3.4.2"></script>
+  <script src="js/core/config.js?v=3.4.3"></script>
+  <script src="js/core/helpers.js?v=3.4.3"></script>
+  <script src="js/utils/indexeddb-backup.js?v=3.4.3"></script>
+  <script src="js/utils/storage.js?v=3.4.3"></script>
+  <script src="js/utils/marker-handler.js?v=3.4.3"></script>
+  <script src="js/modules/timer.js?v=3.4.3"></script>
+  <script src="js/modules/csv-handler.js?v=3.4.3"></script>
+  <script src="js/modules/goalie-selection.js?v=3.4.3"></script>
+  <script src="js/modules/stats-table.js?v=3.4.3"></script>
+  <script src="js/modules/season-table.js?v=3.4.3"></script>
+  <script src="js/modules/goal-map.js?v=3.4.3"></script>
+  <script src="js/modules/season-map.js?v=3.4.3"></script>
+  <script src="js/modules/goal-value.js?v=3.4.3"></script>
+  <script src="js/modules/billing.js?v=3.4.3"></script>
+  <script src="js/app.js?v=3.4.3"></script>
+  <script src="season_table_ui_patch.js?v=3.4.3"></script>
+  <script src="season_map_momentum.js?v=3.4.3"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <script>

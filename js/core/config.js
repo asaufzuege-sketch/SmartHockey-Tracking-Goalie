@@ -1,7 +1,7 @@
 const GOALIE_TEAM_ID = 'Goalie';
 
 const App = {
-  version: '3.4.2',
+  version: '3.4.3',
   pages: {},
   data: {
     players: [],

@@ -24,15 +24,7 @@ App.seasonMap = {
   },
 
   getStoredActiveGoalieName() {
-    const rawValue = AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`);
-    if (!rawValue) return "";
-    try {
-      const parsed = JSON.parse(rawValue);
-      if (typeof parsed === "string") return parsed;
-      return String(parsed?.name || "");
-    } catch (e) {
-      return String(rawValue || "");
-    }
+    return App.helpers.getStoredActiveGoalieName();
   },
 
   getActiveGoalieName() {
@@ -54,6 +46,15 @@ App.seasonMap = {
     const button = document.getElementById("seasonMapGoalieBtn");
     if (!button) return;
     button.textContent = this.selectedGoalie || "No Goalie Selected";
+    button.disabled = !this.selectedGoalie;
+  },
+
+  getRosterGoalies() {
+    const roster = App.helpers.safeJSONParse(`playerSelectionData_${App.helpers.getCurrentTeamId()}`, []) || [];
+    return roster
+      .filter(player => String(player?.position || "").toUpperCase() === "G" || player?.isGoalie === true)
+      .map(player => String(player?.name || "").trim())
+      .filter(Boolean);
   },
 
   resolveGoalieName(value) {
@@ -144,6 +145,17 @@ App.seasonMap = {
     return Array.from(byNormalized.values()).sort((a, b) => a.localeCompare(b));
   },
 
+  getComparableGoalies() {
+    const seasonNames = new Map(
+      Object.keys(App.data.goalieSeasonData || {}).map(name => [String(name || "").trim().toLowerCase(), name])
+    );
+    return this.getRosterGoalies()
+      .map(name => seasonNames.get(String(name || "").trim().toLowerCase()) || "")
+      .filter(goalie => goalie && goalie !== this.selectedGoalie)
+      .filter((goalie, index, array) => array.indexOf(goalie) === index)
+      .sort((a, b) => a.localeCompare(b));
+  },
+
   populateGoalieFilter() {
     const select = document.getElementById("seasonMapGoalieFilter");
     if (!select) return;
@@ -186,6 +198,7 @@ App.seasonMap = {
   },
 
   render() {
+    this.syncSelectedGoalieToActive();
     this.updateGoalieButton();
     this.renderFieldHeader();
     this.renderMarkers();
