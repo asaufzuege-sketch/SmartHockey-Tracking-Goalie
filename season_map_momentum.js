@@ -45,7 +45,7 @@
     return String(value || "").trim().toLowerCase();
   }
 
-  function getBucketValue(timeData, key, selectedGoalie, knownGoaliesNormalized) {
+  function getBucketValue(timeData, key, selectedGoalie) {
     const legacyKey = key.replace(/^p/, "sp");
     const entry = timeData?.[key] ?? timeData?.[legacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
@@ -57,11 +57,7 @@
         const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
         return Number(entry[alias] || 0);
       }
-      const keys = Object.keys(entry);
-      const keysToSum = knownGoaliesNormalized.size
-        ? keys.filter(goalie => knownGoaliesNormalized.has(normalizeGoalieName(goalie)))
-        : keys;
-      return keysToSum.reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
+      return Object.keys(entry).reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
     }
     return Number(entry || 0) || 0;
   }
@@ -70,23 +66,23 @@
     const app = globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
-    const knownGoaliesNormalized = new Set((app?.seasonMap?.getAvailableGoalies?.() || []).map(normalizeGoalieName));
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
-        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoaliesNormalized));
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie));
       }
     });
     while (values.length < 12) values.push(0);
-    return values.slice(0, 12);
+    return { values: values.slice(0, 12), timeData };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const values = readValuesFromStorage();
-    if (values.every(value => Number(value || 0) === 0)) {
+    const { values, timeData } = readValuesFromStorage();
+    const hasStoredData = Object.keys(timeData || {}).some(key => /^s?p[1-3]_[0-3]$/.test(String(key)));
+    if (!hasStoredData) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }

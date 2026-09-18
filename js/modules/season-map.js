@@ -174,6 +174,7 @@ App.seasonMap = {
   render() {
     this.populateGoalieFilter();
     this.populateCompareFilter();
+    this.renderFieldHeader();
     this.renderMarkers();
     this.renderTimeTracking();
     this.persistFilters();
@@ -211,6 +212,30 @@ App.seasonMap = {
         dot.dataset.markerType = marker.markerType || "save";
       });
     });
+  },
+
+  renderFieldHeader() {
+    const fieldBox = document.getElementById("seasonFieldBox");
+    if (!fieldBox) return;
+    const timeData = this.getSeasonTimeData();
+    const periodTotal = (period) => {
+      let total = 0;
+      for (let index = 0; index < 4; index += 1) {
+        const key = `${period}_${index}`;
+        const legacyKey = `s${period}_${index}`;
+        const goalieCounts = timeData[key] || timeData[legacyKey] || {};
+        total += this.getGoalieCount(goalieCounts, this.selectedGoalie);
+      }
+      return total;
+    };
+    let header = fieldBox.querySelector(".field-header");
+    if (!header) {
+      header = document.createElement("div");
+      header.className = "field-header";
+      fieldBox.appendChild(header);
+    }
+    const goalieLabel = this.selectedGoalie || "All";
+    header.textContent = `Goalie: ${goalieLabel} • P1: ${periodTotal("p1")} • P2: ${periodTotal("p2")} • P3: ${periodTotal("p3")}`;
   },
 
   renderTimeTracking() {
