@@ -47,7 +47,7 @@
     return String(value || "").trim().toLowerCase();
   }
 
-  function getBucketValue(timeData, key, selectedGoalie) {
+  function getBucketValue(timeData, key, selectedGoalie, knownGoaliesNormalized) {
     const normalizedKey = String(key || "").toLowerCase();
     const legacyKey = normalizedKey.replace(/^p/, "sp");
     const directKey = Object.keys(timeData || {}).find(storedKey => String(storedKey || "").toLowerCase() === normalizedKey);
@@ -55,12 +55,18 @@
     const entry = timeData?.[directKey] ?? timeData?.[directLegacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
     if (isGoalieBucket) {
-      if (!selectedGoalie) return 0;
-      const direct = Number(entry[selectedGoalie]);
-      if (Number.isFinite(direct)) return direct;
-      const target = String(selectedGoalie).trim().toLowerCase();
-      const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
-      return Number(entry[alias] || 0);
+      if (selectedGoalie) {
+        const direct = Number(entry[selectedGoalie]);
+        if (Number.isFinite(direct)) return direct;
+        const target = String(selectedGoalie).trim().toLowerCase();
+        const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
+        return Number(entry[alias] || 0);
+      }
+      const keys = Object.keys(entry);
+      const keysToSum = knownGoaliesNormalized.size
+        ? keys.filter(goalie => knownGoaliesNormalized.has(normalizeGoalieName(goalie)))
+        : keys;
+      return keysToSum.reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
     }
     return Number(entry || 0) || 0;
   }
@@ -69,31 +75,32 @@
     const app = typeof App !== "undefined" ? App : globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
+    const knownGoaliesNormalized = new Set((app?.seasonMap?.getAvailableGoalies?.() || []).map(normalizeGoalieName));
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
-        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie));
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoaliesNormalized));
       }
     });
     while (values.length < 12) values.push(0);
     const recognizedKeys = Object.keys(timeData || {}).filter(key => BUCKET_KEY_RE.test(String(key || "").trim()));
-    const hasAnyBucketData = recognizedKeys.some(key => {
-      const entry = timeData?.[key];
-      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-        return Object.values(entry).some(value => Number(value || 0) > 0);
-      }
-      return Number(entry || 0) > 0;
-    });
-    return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData, selectedGoalie };
+    return { values: values.slice(0, 12), timeData, recognizedKeys };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const { values, hasAnyBucketData, selectedGoalie } = readValuesFromStorage();
-    const hasVisibleValues = values.some(value => Number(value || 0) > 0);
-    if (!String(selectedGoalie || "").trim() || (!hasAnyBucketData && !hasVisibleValues)) {
+    const { values, timeData, recognizedKeys } = readValuesFromStorage();
+    const hasStoredData = values.some(value => Number(value || 0) > 0)
+      || recognizedKeys.some(key => {
+        const entry = timeData?.[key];
+        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+          return Object.values(entry).some(value => Number(value || 0) > 0);
+        }
+        return Number(entry || 0) > 0;
+      });
+    if (!hasStoredData) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }

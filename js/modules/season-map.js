@@ -36,6 +36,11 @@ App.seasonMap = {
     { key: "bm", anchorX: 50, anchorY: 75 },
     { key: "br", anchorX: 84, anchorY: 75 }
   ],
+  GOAL_FRAME_LEFT_PCT: 8,
+  GOAL_FRAME_RIGHT_PCT: 92,
+  GOAL_FRAME_TOP_PCT: 15,
+  GOAL_FRAME_BOTTOM_PCT: 86,
+  GOAL_FRAME_TOP_ROW_SPLIT_PCT: 50,
 
   init() {
     this.loadPersistedFilters();
@@ -590,9 +595,23 @@ App.seasonMap = {
           marker.player || null
         );
         dot.dataset.period = marker.period || "p1";
-        dot.dataset.markerType = marker.markerType || "";
+        dot.dataset.markerType = this.resolveMarkerType(marker.markerType, marker.color);
       });
     });
+  },
+
+  resolveMarkerType(markerType, markerColor) {
+    const normalizedType = String(markerType || "").trim().toLowerCase();
+    if (normalizedType === "goal" || normalizedType === "save") return normalizedType;
+    const normalizedColor = String(markerColor || "").trim().toLowerCase();
+    if (
+      normalizedColor === "#c62828"
+      || normalizedColor === "rgb(198, 40, 40)"
+      || normalizedColor === "rgba(198, 40, 40, 1)"
+    ) {
+      return "goal";
+    }
+    return "save";
   },
 
   renderFieldHeader() {
@@ -603,11 +622,29 @@ App.seasonMap = {
 
   getGoalAreaZoneKey(xPctImage, yPctImage) {
     if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return null;
-    if (yPctImage < 50) {
-      return xPctImage < 50 ? "tl" : "tr";
+    const frameLeft = this.GOAL_FRAME_LEFT_PCT;
+    const frameRight = this.GOAL_FRAME_RIGHT_PCT;
+    const frameTop = this.GOAL_FRAME_TOP_PCT;
+    const frameBottom = this.GOAL_FRAME_BOTTOM_PCT;
+    if (
+      xPctImage < frameLeft
+      || xPctImage > frameRight
+      || yPctImage < frameTop
+      || yPctImage > frameBottom
+    ) {
+      return null;
     }
-    if (xPctImage < 33.3333) return "bl";
-    if (xPctImage < 66.6667) return "bm";
+    const frameWidth = frameRight - frameLeft;
+    const frameHeight = frameBottom - frameTop;
+    if (!frameWidth || !frameHeight) return null;
+    const normalizedX = ((xPctImage - frameLeft) / frameWidth) * 100;
+    const normalizedY = ((yPctImage - frameTop) / frameHeight) * 100;
+
+    if (normalizedY < this.GOAL_FRAME_TOP_ROW_SPLIT_PCT) {
+      return normalizedX < 50 ? "tl" : "tr";
+    }
+    if (normalizedX < 33.3333) return "bl";
+    if (normalizedX < 66.6667) return "bm";
     return "br";
   },
 
@@ -674,8 +711,7 @@ App.seasonMap = {
       if (marker.style.display === "none") return;
       if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return;
 
-      const markerType = (marker.dataset.markerType || "").toLowerCase();
-      if (markerType !== "goal" && markerType !== "save") return;
+      const markerType = this.resolveMarkerType(marker.dataset.markerType, marker.style.backgroundColor);
       const xPctImage = parseFloat(marker.dataset.xPctImage);
       const yPctImage = parseFloat(marker.dataset.yPctImage);
       if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
@@ -687,6 +723,16 @@ App.seasonMap = {
     });
 
     const totalGoals = Object.values(zoneStats).reduce((sum, stats) => sum + stats.goals, 0);
+    const totalGoalMarkers = Array.from(goalBox.querySelectorAll(".marker-dot")).reduce((sum, marker) => {
+      if (marker.style.display === "none") return sum;
+      if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return sum;
+      return this.resolveMarkerType(marker.dataset.markerType, marker.style.backgroundColor) === "goal" ? sum + 1 : sum;
+    }, 0);
+    console.debug("[SeasonMap] goal-zone-goal-sum-check", {
+      selectedGoalie,
+      zoneGoalSum: totalGoals,
+      totalGoalMarkers
+    });
     const percentByZone = this.getRoundedGoalZonePercents(zoneStats, totalGoals);
 
     this.GOAL_ZONE_LABELS.forEach(zone => {
