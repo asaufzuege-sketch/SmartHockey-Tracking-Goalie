@@ -43,6 +43,7 @@ App.seasonMap = {
   init() {
     this.loadPersistedFilters();
     this.bindViewportSync();
+    this.bindCompareFilter();
   },
 
   getFilterStorageKey() {
@@ -218,27 +219,31 @@ App.seasonMap = {
   populateCompareFilter() {
     const select = document.getElementById("seasonMapCompareGoalie");
     if (!select) return;
-    if (!this.selectedGoalie) {
-      select.innerHTML = '<option value="">No comparison</option>';
-      this.comparisonGoalie = "";
-      return;
-    }
+
     const savedValue = this.resolveGoalieName(this.comparisonGoalie);
-    const goalies = this.getAvailableGoalies().filter(goalie => goalie !== this.selectedGoalie);
-    select.innerHTML = '<option value="">No comparison</option>';
+    let goalies = this.getComparableGoalies();
+    if (goalies.length === 0) {
+      goalies = this.getAvailableGoalies().filter(goalie => goalie !== this.selectedGoalie);
+    }
+
+    select.innerHTML = '<option value="">+ Compare goalie</option>';
     goalies.forEach(goalie => {
       const option = document.createElement("option");
       option.value = goalie;
       option.textContent = goalie;
       select.appendChild(option);
     });
-    select.value = goalies.includes(savedValue) ? savedValue : "";
+
+    const canCompare = Boolean(this.selectedGoalie) && goalies.length > 0;
+    select.disabled = !canCompare;
+    select.value = canCompare && goalies.includes(savedValue) ? savedValue : "";
     this.comparisonGoalie = select.value || "";
   },
 
   render() {
     this.syncSelectedGoalieToActive();
     this.updateGoalieButton();
+    this.populateCompareFilter();
     this.renderFieldHeader();
     this.renderMarkers();
     this.renderGoalAreaStats();
@@ -271,6 +276,23 @@ App.seasonMap = {
 
     window.addEventListener("resize", this.viewportSyncListener);
     window.addEventListener("orientationchange", this.viewportSyncListener);
+  },
+
+  bindCompareFilter() {
+    const select = document.getElementById("seasonMapCompareGoalie");
+    if (!select || select.dataset.bound === "true") return;
+
+    select.addEventListener("change", () => {
+      if (App.seasonTable) {
+        App.seasonTable.goalieSortState.key = null;
+        App.seasonTable.goalieSortState.asc = true;
+      }
+      this.comparisonGoalie = this.resolveGoalieName(select.value || "");
+      this.persistFilters();
+      this.render();
+    });
+
+    select.dataset.bound = "true";
   },
 
   scheduleHeatmapRender(delay = this.HEATMAP_RENDER_DELAY) {
