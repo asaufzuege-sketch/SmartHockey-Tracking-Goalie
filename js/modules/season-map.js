@@ -590,7 +590,7 @@ App.seasonMap = {
           marker.player || null
         );
         dot.dataset.period = marker.period || "p1";
-        dot.dataset.markerType = marker.markerType || "save";
+        dot.dataset.markerType = marker.markerType || (index === 1 ? "goal" : "save");
       });
     });
   },
@@ -642,8 +642,7 @@ App.seasonMap = {
       if (marker.style.display === "none") return;
       if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return;
 
-      const isGoal = (marker.dataset.markerType || "").toLowerCase() === "goal"
-        || /rgb\(198,\s*40,\s*40\)|#c62828/i.test(String(marker.style.backgroundColor || ""));
+      const isGoal = (marker.dataset.markerType || "").toLowerCase() === "goal";
       if (!isGoal) return;
 
       const xPctImage = parseFloat(marker.dataset.xPctImage);

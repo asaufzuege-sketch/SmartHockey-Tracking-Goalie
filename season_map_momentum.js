@@ -77,15 +77,22 @@
     });
     while (values.length < 12) values.push(0);
     const recognizedKeys = Object.keys(timeData || {}).filter(key => BUCKET_KEY_RE.test(String(key || "").trim()));
-    return { values: values.slice(0, 12), timeData, recognizedKeys };
+    const hasAnyBucketData = recognizedKeys.some(key => {
+      const entry = timeData?.[key];
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        return Object.keys(entry).length > 0;
+      }
+      return entry !== null && entry !== undefined && entry !== "";
+    });
+    return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const { values, recognizedKeys } = readValuesFromStorage();
-    if (!recognizedKeys.length) {
+    const { values, recognizedKeys, hasAnyBucketData } = readValuesFromStorage();
+    if (!recognizedKeys.length || !hasAnyBucketData) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }
