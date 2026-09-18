@@ -7,7 +7,6 @@ App.seasonMap = {
   pendingHeatmapImage: null,
   pendingGoalAreaImage: null,
   HEATMAP_RENDER_DELAY: 150,
-  HEATMAP_VIEWPORT_SYNC_DELAY: 100,
   HEATMAP_RADIUS_FACTOR: 0.12,
   HEATMAP_MIN_OPACITY: 0.15,
   HEATMAP_MAX_OPACITY: 0.98,
@@ -28,7 +27,6 @@ App.seasonMap = {
   HEATMAP_COLORED_MIN_LIGHTNESS_FACTOR: 0.68,
   HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
   HEATMAP_MAX_DPR: 3,
-  HEATMAP_BUFFER_MAX_DPR: 2,
   GOAL_ZONE_LABELS: [
     { key: "tl", anchorX: 25, anchorY: 22 },
     { key: "tr", anchorX: 75, anchorY: 22 },
@@ -268,7 +266,7 @@ App.seasonMap = {
         this.renderGoalAreaStats();
         this.scheduleHeatmapRender();
         this.renderMomentumGraphic?.();
-      }, this.HEATMAP_VIEWPORT_SYNC_DELAY);
+      }, 100);
     };
 
     window.addEventListener("resize", this.viewportSyncListener);
@@ -478,16 +476,15 @@ App.seasonMap = {
     const r = parseInt(colorMatch[1], 10);
     const g = parseInt(colorMatch[2], 10);
     const b = parseInt(colorMatch[3], 10);
-    const bufferDpr = Math.max(1, Math.min(dpr, this.HEATMAP_BUFFER_MAX_DPR || dpr));
-    const physicalWidth = Math.round(width * bufferDpr);
-    const physicalHeight = Math.round(height * bufferDpr);
+    const physicalWidth = Math.round(width * dpr);
+    const physicalHeight = Math.round(height * dpr);
 
     const offscreen = document.createElement("canvas");
     offscreen.width = physicalWidth;
     offscreen.height = physicalHeight;
     const offscreenCtx = offscreen.getContext("2d");
     if (!offscreenCtx) return;
-    offscreenCtx.scale(bufferDpr, bufferDpr);
+    offscreenCtx.scale(dpr, dpr);
     offscreenCtx.globalCompositeOperation = "lighter";
 
     const centerOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_CENTER_OPACITY));
@@ -518,8 +515,8 @@ App.seasonMap = {
     blurred.height = physicalHeight;
     const blurredCtx = blurred.getContext("2d");
     if (blurredCtx) {
-      blurredCtx.scale(bufferDpr, bufferDpr);
-      blurredCtx.filter = `blur(${blurPx * bufferDpr}px)`;
+      blurredCtx.scale(dpr, dpr);
+      blurredCtx.filter = `blur(${blurPx}px)`;
       blurredCtx.drawImage(offscreen, 0, 0, width, height);
       blurredCtx.filter = "none";
       densityCanvas = blurred;
@@ -655,33 +652,6 @@ App.seasonMap = {
     return "br";
   },
 
-  getRoundedGoalZonePercents(zoneStats, totalGoals) {
-    if (!totalGoals) return {};
-    const percentEntries = this.GOAL_ZONE_LABELS.map(zone => {
-      const goals = zoneStats[zone.key]?.goals || 0;
-      const exact = (goals / totalGoals) * 100;
-      return { key: zone.key, exact, rounded: Math.round(exact) };
-    });
-    let diff = 100 - percentEntries.reduce((sum, entry) => sum + entry.rounded, 0);
-    if (diff !== 0) {
-      const sorted = [...percentEntries].sort((a, b) => (
-        diff > 0
-          ? (b.exact - b.rounded) - (a.exact - a.rounded)
-          : (a.exact - a.rounded) - (b.exact - b.rounded)
-      ));
-      let index = 0;
-      while (diff !== 0 && sorted.length > 0) {
-        sorted[index % sorted.length].rounded += diff > 0 ? 1 : -1;
-        diff += diff > 0 ? -1 : 1;
-        index += 1;
-      }
-    }
-    return percentEntries.reduce((acc, entry) => {
-      acc[entry.key] = entry.rounded;
-      return acc;
-    }, {});
-  },
-
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
@@ -742,13 +712,11 @@ App.seasonMap = {
         totalGoalMarkers
       });
     }
-    const percentByZone = this.getRoundedGoalZonePercents(zoneStats, totalGoals);
-
     this.GOAL_ZONE_LABELS.forEach(zone => {
       const goals = zoneStats[zone.key]?.goals || 0;
       const saves = zoneStats[zone.key]?.saves || 0;
       const shots = goals + saves;
-      const percent = totalGoals ? (percentByZone[zone.key] || 0) : 0;
+      const percent = totalGoals ? Math.round((goals / totalGoals) * 100) : 0;
       const savePercentText = shots > 0 ? `SV ${Math.round((saves / shots) * 100)}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
