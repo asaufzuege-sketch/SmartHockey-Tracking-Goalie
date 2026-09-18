@@ -4,6 +4,7 @@ App.markerHandler = {
   samplerCache: new WeakMap(),
   
   clampPct(v) {
+    if (!Number.isFinite(v)) return 0;
     return Math.max(0, Math.min(100, v));
   },
   
@@ -117,9 +118,13 @@ App.markerHandler = {
       : (this.computeRenderedImageRect(img) || img?.getBoundingClientRect?.());
 
     if (!rect?.width || !rect?.height) return null;
+    const rectLeft = Number.isFinite(rect.left) ? rect.left : rect.x;
+    const rectTop = Number.isFinite(rect.top) ? rect.top : rect.y;
+    if (!Number.isFinite(rectLeft) || !Number.isFinite(rectTop)) return null;
 
-    const xPctVisible = ((clientX - rect.left) / rect.width) * 100;
-    const yPctVisible = ((clientY - rect.top) / rect.height) * 100;
+    const xPctVisible = ((clientX - rectLeft) / rect.width) * 100;
+    const yPctVisible = ((clientY - rectTop) / rect.height) * 100;
+    if (!Number.isFinite(xPctVisible) || !Number.isFinite(yPctVisible)) return null;
     if (xPctVisible < 0 || xPctVisible > 100 || yPctVisible < 0 || yPctVisible > 100) return null;
 
     if (!crop) {

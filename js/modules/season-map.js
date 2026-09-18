@@ -4,24 +4,6 @@ App.seasonMap = {
 
   init() {
     this.loadPersistedFilters();
-    document.getElementById("seasonMapGoalieFilter")?.addEventListener("change", (event) => {
-      this.selectedGoalie = this.resolveGoalieName(event.target.value || "");
-      if (this.selectedGoalie && this.selectedGoalie === this.comparisonGoalie) {
-        this.comparisonGoalie = "";
-      }
-      this.persistFilters();
-      this.renderFieldHeader();
-      this.render();
-    });
-    document.getElementById("seasonMapCompareGoalie")?.addEventListener("change", (event) => {
-      this.comparisonGoalie = this.resolveGoalieName(event.target.value || "");
-      if (this.comparisonGoalie === this.selectedGoalie) {
-        this.comparisonGoalie = "";
-      }
-      this.persistFilters();
-      this.renderFieldHeader();
-      this.render();
-    });
   },
 
   getFilterStorageKey() {
@@ -39,6 +21,27 @@ App.seasonMap = {
       selectedGoalie: this.selectedGoalie || "",
       comparisonGoalie: this.comparisonGoalie || ""
     }));
+  },
+
+  getActiveGoalieName() {
+    return this.resolveGoalieName(
+      App.goalMap?.getActiveGoalie?.()?.name
+      || AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`)
+      || ""
+    );
+  },
+
+  syncSelectedGoalieToActive() {
+    this.selectedGoalie = this.getActiveGoalieName();
+    if (this.selectedGoalie && this.selectedGoalie === this.comparisonGoalie) {
+      this.comparisonGoalie = "";
+    }
+  },
+
+  updateGoalieButton() {
+    const button = document.getElementById("seasonMapGoalieBtn");
+    if (!button) return;
+    button.textContent = this.selectedGoalie || "No Goalie Selected";
   },
 
   resolveGoalieName(value) {
@@ -171,8 +174,8 @@ App.seasonMap = {
   },
 
   render() {
-    this.populateGoalieFilter();
-    this.populateCompareFilter();
+    this.syncSelectedGoalieToActive();
+    this.updateGoalieButton();
     this.renderFieldHeader();
     this.renderMarkers();
     this.renderTimeTracking();
@@ -216,37 +219,7 @@ App.seasonMap = {
   renderFieldHeader() {
     const fieldBox = document.getElementById("seasonFieldBox");
     if (!fieldBox) return;
-    const timeData = this.getSeasonTimeData();
-    const periodTotal = (period) => {
-      let total = 0;
-      for (let index = 0; index < 4; index += 1) {
-        const key = `${period}_${index}`;
-        const legacyKey = `s${period}_${index}`;
-        const goalieCounts = timeData[key] || timeData[legacyKey] || {};
-        total += this.getGoalieCount(goalieCounts, this.selectedGoalie);
-      }
-      return total;
-    };
-    const periodSections = [
-      { key: "p1", label: "P1" },
-      { key: "p2", label: "P2" },
-      { key: "p3", label: "P3" }
-    ];
-    let header = fieldBox.querySelector(".field-header");
-    if (!header) {
-      header = document.createElement("div");
-      header.className = "field-header";
-      header.setAttribute("role", "note");
-      fieldBox.appendChild(header);
-    }
-    const goalieLabel = this.selectedGoalie || "All";
-    const periodSummary = periodSections
-      .map(period => `${period.label}: ${periodTotal(period.key)}`)
-      .join(" • ");
-    const nextText = `Goalie: ${goalieLabel} • ${periodSummary}`;
-    if (header.textContent !== nextText) {
-      header.textContent = nextText;
-    }
+    fieldBox.querySelector(".field-header")?.remove();
   },
 
   renderTimeTracking() {

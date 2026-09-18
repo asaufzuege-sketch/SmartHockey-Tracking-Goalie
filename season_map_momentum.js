@@ -1,11 +1,12 @@
 (function () {
-  const SVG_W = 900;
-  const SVG_H = 118;
-  const MARGIN = { left: 32, right: 32, top: 12, bottom: 38 };
-  const PLOT_TOP_Y = 14;
+  const SVG_W = 430;
+  const SVG_H = 200;
+  const MARGIN = { left: 36, right: 18, top: 16, bottom: 42 };
+  const PLOT_TOP_Y = 20;
   const PLOT_BASELINE_Y = SVG_H - MARGIN.bottom;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
+  const BUCKET_KEY_RE = /^(?:p|sp)[1-3]_[0-3]$/i;
 
   function getContainer() {
     return document.getElementById("seasonMapMomentumContainer");
@@ -46,8 +47,11 @@
   }
 
   function getBucketValue(timeData, key, selectedGoalie, knownGoaliesNormalized) {
-    const legacyKey = key.replace(/^p/, "sp");
-    const entry = timeData?.[key] ?? timeData?.[legacyKey];
+    const normalizedKey = String(key || "").toLowerCase();
+    const legacyKey = normalizedKey.replace(/^p/, "sp");
+    const directKey = Object.keys(timeData || {}).find(storedKey => String(storedKey || "").toLowerCase() === normalizedKey);
+    const directLegacyKey = Object.keys(timeData || {}).find(storedKey => String(storedKey || "").toLowerCase() === legacyKey);
+    const entry = timeData?.[directKey] ?? timeData?.[directLegacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
     if (isGoalieBucket) {
       if (selectedGoalie) {
@@ -67,7 +71,7 @@
   }
 
   function readValuesFromStorage() {
-    const app = globalThis.App;
+    const app = typeof App !== "undefined" ? App : globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
     const knownGoaliesNormalized = new Set((app?.seasonMap?.getAvailableGoalies?.() || []).map(normalizeGoalieName));
@@ -78,15 +82,23 @@
       }
     });
     while (values.length < 12) values.push(0);
-    return { values: values.slice(0, 12), timeData };
+    const recognizedKeys = Object.keys(timeData || {}).filter(key => BUCKET_KEY_RE.test(String(key || "").trim()));
+    return { values: values.slice(0, 12), timeData, recognizedKeys };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const { values, timeData } = readValuesFromStorage();
-    const hasStoredData = Object.keys(timeData || {}).some(key => /^s?p[1-3]_[0-3]$/.test(String(key)));
+    const { values, timeData, recognizedKeys } = readValuesFromStorage();
+    const hasStoredData = values.some(value => Number(value || 0) > 0)
+      || recognizedKeys.some(key => {
+        const entry = timeData?.[key];
+        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+          return Object.values(entry).some(value => Number(value || 0) > 0);
+        }
+        return Number(entry || 0) > 0;
+      });
     if (!hasStoredData) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
@@ -148,7 +160,7 @@
       const x = minuteToX(minute);
       const isMajor = majorSet.has(minute);
       line(x, PLOT_BASELINE_Y - (isMajor ? 10 : 6), x, PLOT_BASELINE_Y + (isMajor ? 10 : 6), "#cccccc", isMajor ? "1.6" : "1");
-      text(x, PLOT_BASELINE_Y + (isMajor ? 16 : 13), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
+      text(x, PLOT_BASELINE_Y + (isMajor ? 18 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
     }
 
     positiveRuns.forEach(run => {
