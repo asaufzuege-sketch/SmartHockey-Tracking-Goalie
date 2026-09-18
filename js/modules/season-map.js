@@ -174,7 +174,6 @@ App.seasonMap = {
   },
 
   render() {
-    this.syncSelectedGoalieToActive();
     this.updateGoalieButton();
     this.renderFieldHeader();
     this.renderMarkers();

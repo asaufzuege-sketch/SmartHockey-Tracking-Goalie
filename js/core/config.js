@@ -93,6 +93,7 @@ const App = {
       this.goalValue.render();
     }
     if (page === "seasonMap" && this.seasonMap?.render) {
+      this.seasonMap?.syncSelectedGoalieToActive?.();
       this.seasonMap.render();
     }
   },

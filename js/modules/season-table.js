@@ -753,6 +753,8 @@ setStickyOffsets() {
     select.disabled = !activeGoalie || availableGoalies.length === 0;
     select.addEventListener("change", () => {
       if (!App.seasonMap) return;
+      this.goalieSortState.key = null;
+      this.goalieSortState.asc = true;
       App.seasonMap.comparisonGoalie = App.seasonMap.resolveGoalieName(select.value || "");
       App.seasonMap.persistFilters();
       App.seasonMap.render();
@@ -767,6 +769,8 @@ setStickyOffsets() {
       removeBtn.textContent = "×";
       removeBtn.addEventListener("click", () => {
         if (!App.seasonMap) return;
+        this.goalieSortState.key = null;
+        this.goalieSortState.asc = true;
         App.seasonMap.comparisonGoalie = "";
         App.seasonMap.persistFilters();
         App.seasonMap.render();
@@ -982,7 +986,7 @@ setStickyOffsets() {
     };
 
     let displayGoalieRows = goalieRows.slice();
-    if (this.externalGoalieFilter) {
+    if (this.externalGoalieFilter && !this.goalieSortState.key) {
       const ordered = [this.externalGoalieFilter, this.externalComparisonGoalie].filter(Boolean);
       const orderedNormalized = ordered.map(name => String(name || "").trim().toLowerCase());
       const getOrderIndex = (name) => orderedNormalized.indexOf(String(name || "").trim().toLowerCase());
