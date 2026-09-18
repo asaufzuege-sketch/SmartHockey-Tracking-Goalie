@@ -611,6 +611,33 @@ App.seasonMap = {
     return "br";
   },
 
+  getRoundedGoalZonePercents(zoneStats, totalGoals) {
+    if (!totalGoals) return {};
+    const percentEntries = this.GOAL_ZONE_LABELS.map(zone => {
+      const goals = zoneStats[zone.key]?.goals || 0;
+      const exact = (goals / totalGoals) * 100;
+      return { key: zone.key, exact, rounded: Math.round(exact) };
+    });
+    let diff = 100 - percentEntries.reduce((sum, entry) => sum + entry.rounded, 0);
+    if (diff !== 0) {
+      const sorted = [...percentEntries].sort((a, b) => (
+        diff > 0
+          ? (b.exact - b.rounded) - (a.exact - a.rounded)
+          : (a.exact - a.rounded) - (b.exact - b.rounded)
+      ));
+      let index = 0;
+      while (diff !== 0 && sorted.length > 0) {
+        sorted[index % sorted.length].rounded += diff > 0 ? 1 : -1;
+        diff += diff > 0 ? -1 : 1;
+        index += 1;
+      }
+    }
+    return percentEntries.reduce((acc, entry) => {
+      acc[entry.key] = entry.rounded;
+      return acc;
+    }, {});
+  },
+
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
@@ -660,29 +687,7 @@ App.seasonMap = {
     });
 
     const totalGoals = Object.values(zoneStats).reduce((sum, stats) => sum + stats.goals, 0);
-    const percentByZone = {};
-    if (totalGoals > 0) {
-      const percentEntries = this.GOAL_ZONE_LABELS.map(zone => {
-        const goals = zoneStats[zone.key]?.goals || 0;
-        const exact = (goals / totalGoals) * 100;
-        return { key: zone.key, exact, rounded: Math.round(exact) };
-      });
-      let diff = 100 - percentEntries.reduce((sum, entry) => sum + entry.rounded, 0);
-      if (diff !== 0) {
-        const sorted = [...percentEntries].sort((a, b) => (
-          diff > 0
-            ? (b.exact - b.rounded) - (a.exact - a.rounded)
-            : (a.exact - a.rounded) - (b.exact - b.rounded)
-        ));
-        let index = 0;
-        while (diff !== 0 && sorted.length > 0) {
-          sorted[index % sorted.length].rounded += diff > 0 ? 1 : -1;
-          diff += diff > 0 ? -1 : 1;
-          index += 1;
-        }
-      }
-      percentEntries.forEach(entry => { percentByZone[entry.key] = entry.rounded; });
-    }
+    const percentByZone = this.getRoundedGoalZonePercents(zoneStats, totalGoals);
 
     this.GOAL_ZONE_LABELS.forEach(zone => {
       const goals = zoneStats[zone.key]?.goals || 0;
