@@ -4308,6 +4308,13 @@ body.locked {
   pointer-events: none;
 }
 
+#seasonMapPage #seasonFieldBox.half-rink-box img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center bottom !important;
+}
+
 #fieldBox.half-rink-box,
 #seasonFieldBox.half-rink-box {
   width: 100% !important;

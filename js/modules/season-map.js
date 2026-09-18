@@ -227,6 +227,11 @@ App.seasonMap = {
       }
       return total;
     };
+    const periodSections = [
+      { key: "p1", label: "P1" },
+      { key: "p2", label: "P2" },
+      { key: "p3", label: "P3" }
+    ];
     let header = fieldBox.querySelector(".field-header");
     if (!header) {
       header = document.createElement("div");
@@ -234,7 +239,10 @@ App.seasonMap = {
       fieldBox.appendChild(header);
     }
     const goalieLabel = this.selectedGoalie || "All";
-    header.textContent = `Goalie: ${goalieLabel} • P1: ${periodTotal("p1")} • P2: ${periodTotal("p2")} • P3: ${periodTotal("p3")}`;
+    const periodSummary = periodSections
+      .map(period => `${period.label}: ${periodTotal(period.key)}`)
+      .join(" • ");
+    header.textContent = `Goalie: ${goalieLabel} • ${periodSummary}`;
   },
 
   renderTimeTracking() {
