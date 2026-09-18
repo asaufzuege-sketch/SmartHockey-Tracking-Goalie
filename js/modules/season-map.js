@@ -219,11 +219,13 @@ App.seasonMap = {
   populateCompareFilter() {
     const select = document.getElementById("seasonMapCompareGoalie");
     if (!select) return;
+    const previousComparison = this.comparisonGoalie || "";
     select.innerHTML = '<option value="">+ Compare goalie</option>';
 
     if (!this.selectedGoalie) {
       select.disabled = true;
       this.comparisonGoalie = "";
+      if (previousComparison) this.persistFilters();
       return;
     }
 
@@ -241,8 +243,10 @@ App.seasonMap = {
 
     const canCompare = Boolean(this.selectedGoalie) && goalies.length > 0;
     select.disabled = !canCompare;
-    select.value = canCompare && goalies.includes(savedValue) ? savedValue : "";
+    const nextComparison = canCompare && goalies.includes(savedValue) ? savedValue : "";
+    select.value = nextComparison;
     this.comparisonGoalie = select.value || "";
+    if (this.comparisonGoalie !== previousComparison) this.persistFilters();
   },
 
   render() {
