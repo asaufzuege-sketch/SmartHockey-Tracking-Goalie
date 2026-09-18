@@ -4292,21 +4292,6 @@ body.locked {
   color: #5F0FFF !important;
 }
 
-#seasonMapPage #seasonFieldBox.half-rink-box {
-  flex: 0 0 auto !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: auto !important;
-  aspect-ratio: var(--half-rink-aspect-width) / var(--half-rink-aspect-height) !important;
-}
-
-#seasonMapPage #seasonFieldBox.half-rink-box img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  object-position: center bottom !important;
-}
-
 #seasonFieldBox .field-header {
   position: absolute;
   top: 8px;
