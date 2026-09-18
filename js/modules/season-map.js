@@ -236,13 +236,19 @@ App.seasonMap = {
     if (!header) {
       header = document.createElement("div");
       header.className = "field-header";
+      header.setAttribute("role", "status");
+      header.setAttribute("aria-live", "polite");
+      header.setAttribute("aria-atomic", "true");
       fieldBox.appendChild(header);
     }
     const goalieLabel = this.selectedGoalie || "All";
     const periodSummary = periodSections
       .map(period => `${period.label}: ${periodTotal(period.key)}`)
       .join(" • ");
-    header.textContent = `Goalie: ${goalieLabel} • ${periodSummary}`;
+    const nextText = `Goalie: ${goalieLabel} • ${periodSummary}`;
+    if (header.textContent !== nextText) {
+      header.textContent = nextText;
+    }
   },
 
   renderTimeTracking() {
