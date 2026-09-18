@@ -734,8 +734,7 @@ setStickyOffsets() {
 
     const activeGoalie = App.seasonMap?.selectedGoalie || "";
     const currentComparison = App.seasonMap?.comparisonGoalie || "";
-    const availableGoalies = (App.seasonMap?.getAvailableGoalies?.() || [])
-      .filter(goalie => goalie && goalie !== activeGoalie);
+    const availableGoalies = App.seasonMap?.getComparableGoalies?.() || [];
 
     const defaultOption = document.createElement("option");
     defaultOption.value = "";
@@ -1103,9 +1102,9 @@ setStickyOffsets() {
     });
   },
 
-  exportFromStats() {
+  exportFromStats(options = {}) {
     if (!App.data.selectedPlayers.length) {
-      alert("No goalies selected.");
+      alert("No active goalie selected.");
       return;
     }
 
@@ -1115,8 +1114,8 @@ setStickyOffsets() {
       this.showGoalieMinutesModal(opponentIndex, () => {
         App.goalMap?.syncCurrentGameToSeasonMap?.();
         // After all modals confirmed, perform the normal export
-        this.performExport();
-      });
+        this.performExport(options);
+      }, options.onCancel);
     });
   },
   
@@ -1407,7 +1406,7 @@ setStickyOffsets() {
   // Zeigt das Goalie-Minuten-Modal für alle aktiven Goalies des aktuellen Spiels.
   // opponentIndex: der Index des Gegners aus handleGoalValueConfirm (für gvAgainst).
   // onComplete(): wird nach Bestätigung aufgerufen (führt dann performExport aus).
-  showGoalieMinutesModal(opponentIndex, onComplete) {
+  showGoalieMinutesModal(opponentIndex, onComplete, onCancel = null) {
     const modal = document.getElementById("goalieMinutesModal");
     const fieldsContainer = document.getElementById("goalieMinutesFields");
     const confirmBtn = document.getElementById("goalieMinutesConfirm");
@@ -1420,41 +1419,35 @@ setStickyOffsets() {
       return;
     }
 
-    // Aktive Goalies aus den für dieses Spiel ausgewählten Spielern ermitteln
-    // (App.data.selectedPlayers enthält nur Spieler mit aktivierter Checkbox)
-    const activeGoalies = App.data.selectedPlayers.filter(
-      p => p.position === "G" && p.name && p.name.trim() !== ""
-    );
+    const activeGoalie = App.goalMap?.getActiveGoalie?.() || App.data.selectedPlayers[0] || null;
 
-    if (activeGoalies.length === 0) {
+    if (!activeGoalie?.name) {
       // Keine Goalies → direkt exportieren
       onComplete();
       return;
     }
 
-    // Felder dynamisch aufbauen
     fieldsContainer.innerHTML = "";
-    activeGoalies.forEach(goalie => {
-      const row = document.createElement("div");
-      row.className = "goalie-minutes-row";
-      row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:10px;";
+    const row = document.createElement("div");
+    row.className = "goalie-minutes-row";
+    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:10px;";
 
-      const label = document.createElement("label");
-      label.textContent = goalie.name;
-      label.style.cssText = "min-width:100px;font-weight:600;";
+    const label = document.createElement("label");
+    label.textContent = activeGoalie.name;
+    label.style.cssText = "min-width:100px;font-weight:600;";
 
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "MM:SS";
-      input.dataset.goalieName = goalie.name;
-      input.dataset.goalieNum = goalie.num || goalie.number || "";
-      input.className = "goalie-minutes-input";
-      input.style.cssText = "width:90px;padding:6px;border:1px solid #aaa;border-radius:6px;font-size:1rem;background:var(--input-bg,#fff);color:var(--text,#111);";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "MM:SS";
+    input.value = document.getElementById("timerBtn")?.textContent?.trim() || "";
+    input.dataset.goalieName = activeGoalie.name;
+    input.dataset.goalieNum = activeGoalie.num || activeGoalie.number || "";
+    input.className = "goalie-minutes-input";
+    input.style.cssText = "width:90px;padding:6px;border:1px solid #aaa;border-radius:6px;font-size:1rem;background:var(--input-bg,#fff);color:var(--text,#111);";
 
-      row.appendChild(label);
-      row.appendChild(input);
-      fieldsContainer.appendChild(row);
-    });
+    row.appendChild(label);
+    row.appendChild(input);
+    fieldsContainer.appendChild(row);
 
     modal.style.display = "flex";
 
@@ -1495,8 +1488,7 @@ setStickyOffsets() {
     const handleCancel = () => {
       modal.style.display = "none";
       cleanup();
-      // Nicht abbrechen – Goalie-Export überspringen, Feldspieler-Export trotzdem durchführen
-      onComplete();
+      onCancel?.();
     };
 
     const handleOutsideClick = (e) => {
@@ -1614,8 +1606,8 @@ setStickyOffsets() {
     console.log("[Season Table] Goalie season data updated", goalieSeasonData);
   },
 
-  performExport() {
-    if (!confirm("Export game to Season?")) return;
+  performExport(options = {}) {
+    if (!options.skipExportConfirm && !confirm("Export game to Season?")) return;
 
     const fieldPlayers = App.data.selectedPlayers.filter(p => p.position !== "G" && !p.isGoalie);
     fieldPlayers.forEach(p => {
@@ -1676,7 +1668,9 @@ setStickyOffsets() {
       App.goalValue.ensureDataForSeason();
     }
 
-    const keep = confirm("Game exported to Season. Keep data in Game? (OK = Yes)");
+    const keep = options.clearAfterExport
+      ? false
+      : confirm("Game exported to Season. Keep data in Game? (OK = Yes)");
     if (!keep) {
       App.data.selectedPlayers.forEach(p => {
         const name = p.name;
@@ -1689,6 +1683,7 @@ setStickyOffsets() {
       if (App.storage && typeof App.storage.clearOnIceShotCounts === "function") {
         App.storage.clearOnIceShotCounts();
       }
+      App.goalMap?.reset?.(true);
       App.storage.saveStatsData();
       App.storage.savePlayerTimes();
       if (App.statsTable && typeof App.statsTable.render === "function") {
@@ -1700,6 +1695,7 @@ setStickyOffsets() {
       App.showPage("seasonMap");
     }
     this.render();
+    options.afterExport?.();
   },
 
   exportCSV() {

@@ -17,7 +17,7 @@
   --ice-top: #5F0FFF;
   --ice-bottom: #5F0FFF;
   --half-rink-aspect-width: 428;
-  --half-rink-aspect-height: 413;
+  --half-rink-aspect-height: 414;
   
   /* NEU: Hintergrund für Bilderboxen (Light Mode: Weiß) */
   --img-box-bg: #ffffff;
@@ -233,6 +233,11 @@ h1 {
   align-items: center;
   justify-content: center;
   text-shadow: none;
+}
+
+.top-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 #themeToggleBtn:hover {
@@ -4246,7 +4251,8 @@ body.locked {
   height: auto;
   max-height: none;
   aspect-ratio: var(--half-rink-aspect-width) / var(--half-rink-aspect-height);
-  flex: 0 0 auto;
+  flex: 0 0 auto !important;
+  align-self: flex-start;
 }
 
 .half-rink-box img {
@@ -4316,13 +4322,6 @@ body.locked {
 #statsPage #timeTrackingBox {
   height: auto;
   min-height: 0;
-}
-
-#seasonMapPage #seasonFieldBox.half-rink-box img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  object-position: center bottom !important;
 }
 
 #seasonMapPage .torbild-layout {

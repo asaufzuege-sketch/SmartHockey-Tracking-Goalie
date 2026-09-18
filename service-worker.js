@@ -1,18 +1,18 @@
-const CACHE_VERSION = 'v3.4.2';
-const CACHE_NAME = 'smarthockey-goalie-' + CACHE_VERSION;
+const CACHE_VERSION = '3.4.3';
+const CACHE_NAME = 'smarthockey-goalie-v' + CACHE_VERSION;
 
 const imageUrlsToCacheIndividually = [
   './Spielfeld Overlay.png',
   './Tor Rot.png',
-  './icons/icon-48.png',
-  './icons/icon-72.png',
-  './icons/icon-96.png',
-  './icons/icon-128.png',
-  './icons/icon-144.png',
-  './icons/icon-152.png',
-  './icons/icon-192.png',
-  './icons/icon-384.png',
-  './icons/icon-512.png'
+  './icons/icon-48.png?v=' + CACHE_VERSION,
+  './icons/icon-72.png?v=' + CACHE_VERSION,
+  './icons/icon-96.png?v=' + CACHE_VERSION,
+  './icons/icon-128.png?v=' + CACHE_VERSION,
+  './icons/icon-144.png?v=' + CACHE_VERSION,
+  './icons/icon-152.png?v=' + CACHE_VERSION,
+  './icons/icon-192.png?v=' + CACHE_VERSION,
+  './icons/icon-384.png?v=' + CACHE_VERSION,
+  './icons/icon-512.png?v=' + CACHE_VERSION
 ];
 
 const imageUrlsToCacheIndividuallySet = new Set(imageUrlsToCacheIndividually);
@@ -24,6 +24,7 @@ const urlsToCache = [
   './terms.html',
   './style.css?v=' + CACHE_VERSION,
   './season_table_styles.css?v=' + CACHE_VERSION,
+  './season_map_momentum.css?v=' + CACHE_VERSION,
   './js/app.js?v=' + CACHE_VERSION,
   './js/core/config.js?v=' + CACHE_VERSION,
   './js/core/helpers.js?v=' + CACHE_VERSION,
@@ -40,7 +41,8 @@ const urlsToCache = [
   './js/modules/goal-value.js?v=' + CACHE_VERSION,
   './js/modules/billing.js?v=' + CACHE_VERSION,
   './season_table_ui_patch.js?v=' + CACHE_VERSION,
-  './manifest.json',
+  './season_map_momentum.js?v=' + CACHE_VERSION,
+  './manifest.json?v=' + CACHE_VERSION,
   ...imageUrlsToCacheIndividually
 ];
 

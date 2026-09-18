@@ -5,6 +5,42 @@ App.helpers = {
   getCurrentTeamId() {
     return GOALIE_TEAM_ID;
   },
+
+  getActiveGoalieStorageKey() {
+    return `activeGoalie_${this.getCurrentTeamId()}`;
+  },
+
+  getLegacyActiveGoalieStorageKey() {
+    return `goalMapActiveGoalie_${this.getCurrentTeamId()}`;
+  },
+
+  getStoredActiveGoalieName() {
+    const parseStoredName = (value) => {
+      if (!value) return "";
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === "string") return parsed;
+        return String(parsed?.name || "");
+      } catch (e) {
+        return String(value || "");
+      }
+    };
+
+    return parseStoredName(AppStorage.getItem(this.getActiveGoalieStorageKey()))
+      || parseStoredName(AppStorage.getItem(this.getLegacyActiveGoalieStorageKey()))
+      || "";
+  },
+
+  setStoredActiveGoalieName(name) {
+    const value = String(name || "").trim();
+    if (value) {
+      AppStorage.setItem(this.getActiveGoalieStorageKey(), value);
+      AppStorage.setItem(this.getLegacyActiveGoalieStorageKey(), value);
+      return;
+    }
+    AppStorage.removeItem(this.getActiveGoalieStorageKey());
+    AppStorage.removeItem(this.getLegacyActiveGoalieStorageKey());
+  },
   
   escapeHtml(s) {
     return String(s || "").replace(/[&<>"']/g, c => ({

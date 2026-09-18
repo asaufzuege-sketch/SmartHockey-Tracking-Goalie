@@ -12,7 +12,8 @@ App.statsTable = {
   },
 
   getRows() {
-    const selectedGoalies = Array.isArray(App.data.selectedPlayers) ? App.data.selectedPlayers : [];
+    const activeGoalie = App.goalMap?.getActiveGoalie?.();
+    const selectedGoalies = activeGoalie ? [activeGoalie] : [];
     const fieldMarkers = App.goalMap?.getCurrentMarkersFromDOM?.()?.[0] || [];
     const counts = new Map();
 
@@ -51,7 +52,7 @@ App.statsTable = {
 
     const rows = this.getRows();
     if (rows.length === 0) {
-      this.container.innerHTML = `<div class="empty-state-card">Select at least one goalie on the Goalie Selection page.</div>`;
+      this.container.innerHTML = `<div class="empty-state-card">Select one active goalie on the Goalie Selection page.</div>`;
       return;
     }
 

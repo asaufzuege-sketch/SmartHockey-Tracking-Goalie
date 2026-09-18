@@ -35,7 +35,7 @@ App.goalMap = {
   },
 
   getActiveGoalie() {
-    const activeName = AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`) || "";
+    const activeName = App.helpers.getStoredActiveGoalieName();
     return (App.data.selectedPlayers || []).find(player => player.name === activeName) || null;
   },
 
@@ -45,19 +45,15 @@ App.goalMap = {
 
     const firstGoalie = (App.data.selectedPlayers || [])[0]?.name || "";
     if (firstGoalie) {
-      AppStorage.setItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`, firstGoalie);
+      App.helpers.setStoredActiveGoalieName(firstGoalie);
       return this.getActiveGoalie();
     }
-    AppStorage.removeItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`);
+    App.helpers.setStoredActiveGoalieName("");
     return null;
   },
 
   setActiveGoalie(name) {
-    if (name) {
-      AppStorage.setItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`, name);
-    } else {
-      AppStorage.removeItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`);
-    }
+    App.helpers.setStoredActiveGoalieName(name);
     this.updateActiveGoalieButton();
     this.filterByGoalies(name ? [name] : []);
     this.renderTimeTracking();
@@ -68,6 +64,7 @@ App.goalMap = {
     if (!btn) return;
     const goalie = this.ensureActiveGoalieValid();
     btn.textContent = goalie?.name || "No Goalie Selected";
+    btn.disabled = !goalie;
   },
 
   attachMarkerHandlers() {
@@ -340,6 +337,17 @@ App.goalMap = {
     });
   },
 
+  hasUnsavedGameData() {
+    const teamId = App.helpers.getCurrentTeamId();
+    const currentMarkers = this.getCurrentMarkersFromDOM();
+    const currentTimeData = this.readTimeDataWithPlayers();
+    const hasMarkers = currentMarkers.some(markers => Array.isArray(markers) && markers.length > 0);
+    const hasTimeData = Object.keys(currentTimeData || {}).length > 0;
+    if (!hasMarkers && !hasTimeData) return false;
+    const exportHash = JSON.stringify({ currentMarkers, currentTimeData });
+    return exportHash !== AppStorage.getItem(`seasonMapLastExportHash_${teamId}`);
+  },
+
   readTimeTrackingFromBox() {
     const flat = {};
     this.timeTrackingBox?.querySelectorAll(".period").forEach(periodEl => {
@@ -405,6 +413,7 @@ App.goalMap = {
     AppStorage.removeItem(`rinkCountData_${teamId}`);
     AppStorage.removeItem(`timeDataWithPlayers_${teamId}`);
     this.syncGoalMapDataFromMarkers();
+    this.renderTimeTracking();
     App.statsTable?.render?.();
   }
 };
