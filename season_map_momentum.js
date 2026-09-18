@@ -84,16 +84,16 @@
       }
       return Number(entry || 0) > 0;
     });
-    return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData };
+    return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData, selectedGoalie };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const { values, hasAnyBucketData } = readValuesFromStorage();
+    const { values, hasAnyBucketData, selectedGoalie } = readValuesFromStorage();
     const hasVisibleValues = values.some(value => Number(value || 0) > 0);
-    if (!hasAnyBucketData && !hasVisibleValues) {
+    if (!String(selectedGoalie || "").trim() || (!hasAnyBucketData && !hasVisibleValues)) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }

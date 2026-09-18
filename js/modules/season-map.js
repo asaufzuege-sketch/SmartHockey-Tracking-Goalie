@@ -590,11 +590,7 @@ App.seasonMap = {
           marker.player || null
         );
         dot.dataset.period = marker.period || "p1";
-        dot.dataset.markerType = marker.markerType || (
-          marker.color === "#c62828" || marker.color === "rgb(198, 40, 40)"
-            ? "goal"
-            : "save"
-        );
+        dot.dataset.markerType = marker.markerType || "";
       });
     });
   },
@@ -671,6 +667,7 @@ App.seasonMap = {
       if (!position?.valid) return;
       const label = document.createElement("div");
       label.className = "goal-area-label";
+      label.setAttribute("aria-hidden", "true");
       label.style.left = `${position.xPct}%`;
       label.style.top = `${position.yPct}%`;
       label.textContent = `${count} · ${percent}%`;
