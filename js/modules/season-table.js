@@ -721,6 +721,64 @@ setStickyOffsets() {
 
     this.renderGoalieTable(fixedContainer, tableScrollWrapper, { withSeparator: false });
     this.setupSynchronizedVerticalScroll(wrapper);
+    this.renderGoalieComparisonControl();
+  },
+
+  renderGoalieComparisonControl() {
+    const controlRow = document.createElement("div");
+    controlRow.className = "season-goalie-compare-row";
+
+    const select = document.createElement("select");
+    select.className = "season-goalie-compare-select";
+    select.setAttribute("aria-label", "Compare goalie");
+
+    const activeGoalie = App.seasonMap?.selectedGoalie || "";
+    const currentComparison = App.seasonMap?.comparisonGoalie || "";
+    const availableGoalies = (App.seasonMap?.getAvailableGoalies?.() || [])
+      .filter(goalie => goalie && goalie !== activeGoalie);
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "+ Compare goalie";
+    select.appendChild(defaultOption);
+
+    availableGoalies.forEach(goalie => {
+      const option = document.createElement("option");
+      option.value = goalie;
+      option.textContent = goalie;
+      select.appendChild(option);
+    });
+
+    select.value = availableGoalies.includes(currentComparison) ? currentComparison : "";
+    select.disabled = !activeGoalie || availableGoalies.length === 0;
+    select.addEventListener("change", () => {
+      if (!App.seasonMap) return;
+      this.goalieSortState.key = null;
+      this.goalieSortState.asc = true;
+      App.seasonMap.comparisonGoalie = App.seasonMap.resolveGoalieName(select.value || "");
+      App.seasonMap.persistFilters();
+      App.seasonMap.render();
+    });
+    controlRow.appendChild(select);
+
+    if (currentComparison) {
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "season-goalie-compare-remove";
+      removeBtn.setAttribute("aria-label", `Remove comparison goalie ${currentComparison}`);
+      removeBtn.textContent = "×";
+      removeBtn.addEventListener("click", () => {
+        if (!App.seasonMap) return;
+        this.goalieSortState.key = null;
+        this.goalieSortState.asc = true;
+        App.seasonMap.comparisonGoalie = "";
+        App.seasonMap.persistFilters();
+        App.seasonMap.render();
+      });
+      controlRow.appendChild(removeBtn);
+    }
+
+    this.container.appendChild(controlRow);
   },
 
   // Rendert die Goalie-Saison-Tabelle in dieselben Container wie die Spieler-Tabelle.

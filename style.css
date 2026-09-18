@@ -1616,12 +1616,10 @@ button,
 
 #seasonMapMomentumContainer {
   width: 100%;
-  max-width: 1100px;
-  margin: 12px auto 0 auto;
-  border-radius: 8px;
-  background: transparent;
+  max-width: none;
+  margin: 0;
   box-sizing: border-box;
-  padding: 2px 6px 6px 6px;
+  padding: 0;
 }
 #seasonMapMomentumContainer svg {
   display: block;
@@ -4292,20 +4290,32 @@ body.locked {
   color: #5F0FFF !important;
 }
 
-#seasonFieldBox .field-header {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 6;
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(95, 15, 255, 0.6);
-  background: rgba(17, 17, 17, 0.8);
-  color: #5F0FFF;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.2;
-  pointer-events: none;
+#statsPage .torbild-layout {
+  height: auto !important;
+}
+
+#statsPage .field-column,
+#statsPage .goal-column {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+#statsPage .goal-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#statsPage #goalRedBox {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 543 / 333;
+}
+
+#statsPage #timeTrackingBox {
+  height: auto;
+  min-height: 0;
 }
 
 #seasonMapPage #seasonFieldBox.half-rink-box img {
@@ -4313,6 +4323,11 @@ body.locked {
   height: 100% !important;
   object-fit: cover !important;
   object-position: center bottom !important;
+}
+
+#seasonMapPage .torbild-layout {
+  height: auto !important;
+  margin-bottom: 18px !important;
 }
 
 #fieldBox.half-rink-box,
@@ -4334,17 +4349,55 @@ body.locked {
 #seasonMapPage .goal-column {
   display: flex !important;
   flex-direction: column !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
 }
 
 #seasonMapPage #seasonGoalRedBox {
-  flex: 1 1 auto !important;
+  flex: 0 0 auto !important;
+  height: auto !important;
   min-height: 0 !important;
+  aspect-ratio: 543 / 333;
+}
+
+#seasonMapPage .season-momentum-box {
+  flex: 0 0 auto !important;
+  display: block !important;
+  padding: 12px !important;
+  overflow: visible !important;
 }
 
 #seasonMapPage #seasonMapTimeTrackingBox,
 #seasonMapPage .time-tracking-box {
   display: none !important;
+}
+
+#seasonMapStatsContainer .season-goalie-compare-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#seasonMapStatsContainer .season-goalie-compare-select,
+#seasonMapStatsContainer .season-goalie-compare-remove {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: #2c2c2c;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+#seasonMapStatsContainer .season-goalie-compare-select {
+  min-width: 180px;
+  padding: 10px 14px;
+}
+
+#seasonMapStatsContainer .season-goalie-compare-remove {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  cursor: pointer;
 }
 
 @media (min-width: 900px) {

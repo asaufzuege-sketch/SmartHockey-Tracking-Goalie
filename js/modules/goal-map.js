@@ -107,15 +107,6 @@ App.goalMap = {
         const pos = getPosFromEvent(event);
         if (!pos) return;
 
-        if (box === this.goalBox) {
-          const sampler = App.markerHandler.createImageSampler(img);
-          if (sampler?.valid) {
-            const isAllowedGoalArea = sampler.isNeutralWhiteAt(pos.xPct, pos.yPct, 180, 60)
-              || sampler.isWhiteAt(pos.xPct, pos.yPct, 185);
-            if (!isAllowedGoalArea) return;
-          }
-        }
-
         const dot = App.markerHandler.createMarkerPercent(
           pos.xPct,
           pos.yPct,
