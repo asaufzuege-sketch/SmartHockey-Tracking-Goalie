@@ -249,7 +249,14 @@ App.seasonMap = {
     if (this.comparisonGoalie !== previousComparison) this.persistFilters();
   },
 
-  render() {
+  renderSeasonTable() {
+    if (!App.seasonTable) return;
+    App.seasonTable.externalGoalieFilter = this.selectedGoalie || "";
+    App.seasonTable.externalComparisonGoalie = this.comparisonGoalie || "";
+    App.seasonTable.render();
+  },
+
+  render(options = {}) {
     this.syncSelectedGoalieToActive();
     this.updateGoalieButton();
     this.populateCompareFilter();
@@ -260,11 +267,7 @@ App.seasonMap = {
     this.renderTimeTracking();
     this.persistFilters();
     this.renderMomentumGraphic?.();
-    if (App.seasonTable) {
-      App.seasonTable.externalGoalieFilter = this.selectedGoalie || "";
-      App.seasonTable.externalComparisonGoalie = this.comparisonGoalie || "";
-      App.seasonTable.render();
-    }
+    if (!options.skipSeasonTable) this.renderSeasonTable();
   },
 
   bindViewportSync() {
@@ -298,8 +301,8 @@ App.seasonMap = {
       }
       this.comparisonGoalie = this.resolveGoalieName(select.value || "");
       this.persistFilters();
-      this.render();
-      App.seasonTable?.render?.();
+      this.render({ skipSeasonTable: true });
+      this.renderSeasonTable();
     });
 
     select.dataset.bound = "true";
