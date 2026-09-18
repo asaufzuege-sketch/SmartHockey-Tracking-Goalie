@@ -236,9 +236,7 @@ App.seasonMap = {
     if (!header) {
       header = document.createElement("div");
       header.className = "field-header";
-      header.setAttribute("role", "status");
-      header.setAttribute("aria-live", "polite");
-      header.setAttribute("aria-atomic", "true");
+      header.setAttribute("role", "note");
       fieldBox.appendChild(header);
     }
     const goalieLabel = this.selectedGoalie || "All";
