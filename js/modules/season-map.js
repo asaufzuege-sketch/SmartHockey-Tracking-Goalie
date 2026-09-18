@@ -1,9 +1,37 @@
 App.seasonMap = {
   selectedGoalie: "",
   comparisonGoalie: "",
+  heatmapRenderTimeout: null,
+  resizeTimeout: null,
+  viewportSyncListener: null,
+  pendingHeatmapImage: null,
+  HEATMAP_RENDER_DELAY: 150,
+  HEATMAP_VIEWPORT_SYNC_DELAY: 100,
+  HEATMAP_RADIUS_FACTOR: 0.12,
+  HEATMAP_MIN_OPACITY: 0.15,
+  HEATMAP_MAX_OPACITY: 0.98,
+  HEATMAP_DENSITY_POWER: 1.65,
+  HEATMAP_DENSITY_SCALE: 2.8,
+  HEATMAP_MIN_DENSITY_SCALE: 0.1,
+  HEATMAP_BLUR_FACTOR: 0.32,
+  HEATMAP_MIN_BLUR_PX: 6,
+  HEATMAP_GRADIENT_CENTER_OPACITY: 0.18,
+  HEATMAP_GRADIENT_OUTER_OPACITY: 0.065,
+  HEATMAP_GRADIENT_EDGE_OPACITY: 0.022,
+  HEATMAP_TARGET_S_BOOST: 1.0,
+  HEATMAP_TARGET_L_DROP: 0.18,
+  HEATMAP_NEUTRAL_SATURATION_THRESHOLD: 0.08,
+  HEATMAP_NEUTRAL_MAX_SATURATION: 0.12,
+  HEATMAP_NEUTRAL_SATURATION_BOOST: 0.04,
+  HEATMAP_NEUTRAL_MIN_LIGHTNESS_FACTOR: 0.35,
+  HEATMAP_COLORED_MIN_LIGHTNESS_FACTOR: 0.68,
+  HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
+  HEATMAP_MAX_DPR: 3,
+  HEATMAP_BUFFER_MAX_DPR: 2,
 
   init() {
     this.loadPersistedFilters();
+    this.bindViewportSync();
   },
 
   getFilterStorageKey() {
@@ -202,6 +230,7 @@ App.seasonMap = {
     this.updateGoalieButton();
     this.renderFieldHeader();
     this.renderMarkers();
+    this.scheduleHeatmapRender();
     this.renderTimeTracking();
     this.persistFilters();
     this.renderMomentumGraphic?.();
@@ -210,6 +239,321 @@ App.seasonMap = {
       App.seasonTable.externalComparisonGoalie = this.comparisonGoalie || "";
       App.seasonTable.render();
     }
+  },
+
+  bindViewportSync() {
+    if (this.viewportSyncListener) {
+      window.removeEventListener("resize", this.viewportSyncListener);
+      window.removeEventListener("orientationchange", this.viewportSyncListener);
+    }
+
+    this.viewportSyncListener = () => {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = setTimeout(() => {
+        App.markerHandler?.repositionMarkers?.();
+        this.scheduleHeatmapRender();
+      }, this.HEATMAP_VIEWPORT_SYNC_DELAY);
+    };
+
+    window.addEventListener("resize", this.viewportSyncListener);
+    window.addEventListener("orientationchange", this.viewportSyncListener);
+  },
+
+  scheduleHeatmapRender(delay = this.HEATMAP_RENDER_DELAY) {
+    clearTimeout(this.heatmapRenderTimeout);
+    this.heatmapRenderTimeout = setTimeout(() => {
+      this.renderHeatmap();
+    }, Math.max(0, Number(delay) || 0));
+  },
+
+  getHeatmapCanvasRect(fieldBox, img) {
+    const crop = App.markerHandler?.getCropRect?.(fieldBox);
+    if (crop) {
+      return {
+        x: 0,
+        y: 0,
+        width: fieldBox.clientWidth,
+        height: fieldBox.clientHeight,
+        valid: fieldBox.clientWidth > 0 && fieldBox.clientHeight > 0
+      };
+    }
+
+    const rendered = App.markerHandler?.computeRenderedImageRect?.(img);
+    const boxRect = fieldBox.getBoundingClientRect();
+    if (!rendered?.valid || !boxRect?.width || !boxRect?.height) return null;
+
+    return {
+      x: (Number.isFinite(rendered.left) ? rendered.left : rendered.x) - boxRect.left,
+      y: (Number.isFinite(rendered.top) ? rendered.top : rendered.y) - boxRect.top,
+      width: rendered.width,
+      height: rendered.height,
+      valid: rendered.width > 0 && rendered.height > 0
+    };
+  },
+
+  getHeatmapMarkers(fieldBox, img, canvasRect) {
+    const goalMarkers = [];
+    const saveMarkers = [];
+
+    fieldBox.querySelectorAll(".marker-dot").forEach(marker => {
+      const xPctImage = parseFloat(marker.dataset.xPctImage);
+      const yPctImage = parseFloat(marker.dataset.yPctImage);
+      if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
+
+      const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
+        fieldBox,
+        img,
+        xPctImage,
+        yPctImage
+      );
+      if (!position?.valid) return;
+
+      const absoluteX = (position.xPct / 100) * fieldBox.clientWidth;
+      const absoluteY = (position.yPct / 100) * fieldBox.clientHeight;
+      const x = absoluteX - canvasRect.x;
+      const y = absoluteY - canvasRect.y;
+      if (x < 0 || y < 0 || x > canvasRect.width || y > canvasRect.height) return;
+
+      const entry = {
+        x: (x / canvasRect.width) * 100,
+        y: (y / canvasRect.height) * 100
+      };
+
+      if ((marker.dataset.markerType || "").toLowerCase() === "goal") {
+        goalMarkers.push(entry);
+      } else {
+        saveMarkers.push(entry);
+      }
+    });
+
+    return { goalMarkers, saveMarkers };
+  },
+
+  renderHeatmap() {
+    const fieldBox = document.getElementById("seasonFieldBox");
+    if (!fieldBox) return;
+
+    clearTimeout(this.heatmapRenderTimeout);
+
+    const img = fieldBox.querySelector("img");
+    if (!img) return;
+    if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
+      if (this.pendingHeatmapImage !== img) {
+        this.pendingHeatmapImage = img;
+        img.addEventListener("load", () => {
+          if (this.pendingHeatmapImage === img) {
+            this.pendingHeatmapImage = null;
+          }
+          this.scheduleHeatmapRender(0);
+        }, { once: true });
+      }
+      return;
+    }
+    this.pendingHeatmapImage = null;
+
+    const canvasRect = this.getHeatmapCanvasRect(fieldBox, img);
+    if (!canvasRect?.valid || !canvasRect.width || !canvasRect.height) return;
+
+    const { goalMarkers, saveMarkers } = this.getHeatmapMarkers(fieldBox, img, canvasRect);
+    if (!goalMarkers.length && !saveMarkers.length) {
+      fieldBox.querySelector(".heatmap-canvas")?.remove();
+      return;
+    }
+
+    fieldBox.querySelector(".heatmap-canvas")?.remove();
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "heatmap-canvas";
+    canvas.style.left = `${canvasRect.x}px`;
+    canvas.style.top = `${canvasRect.y}px`;
+    canvas.style.width = `${canvasRect.width}px`;
+    canvas.style.height = `${canvasRect.height}px`;
+
+    const dpr = Math.max(1, Math.min(this.HEATMAP_MAX_DPR, window.devicePixelRatio || 1));
+    canvas.width = Math.round(canvasRect.width * dpr);
+    canvas.height = Math.round(canvasRect.height * dpr);
+    if (!canvas.width || !canvas.height) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    this.drawHeatmapZone(ctx, saveMarkers, canvasRect.width, canvasRect.height, "rgba(68, 68, 68, 0.6)", dpr);
+    this.drawHeatmapZone(ctx, goalMarkers, canvasRect.width, canvasRect.height, "rgba(255, 0, 0, 0.6)", dpr);
+
+    const firstMarker = fieldBox.querySelector(".marker-dot");
+    if (firstMarker) {
+      fieldBox.insertBefore(canvas, firstMarker);
+      return;
+    }
+    fieldBox.appendChild(canvas);
+  },
+
+  getHeatmapRadiusFactor() {
+    return this.HEATMAP_RADIUS_FACTOR;
+  },
+
+  rgbToHsl(red, green, blue) {
+    const redNorm = red / 255;
+    const greenNorm = green / 255;
+    const blueNorm = blue / 255;
+    const max = Math.max(redNorm, greenNorm, blueNorm);
+    const min = Math.min(redNorm, greenNorm, blueNorm);
+    const delta = max - min;
+    let hue = 0;
+    let saturation = 0;
+    const lightness = (max + min) / 2;
+
+    if (delta !== 0) {
+      saturation = delta / (1 - Math.abs((2 * lightness) - 1));
+      switch (max) {
+        case redNorm:
+          hue = ((greenNorm - blueNorm) / delta) % 6;
+          break;
+        case greenNorm:
+          hue = ((blueNorm - redNorm) / delta) + 2;
+          break;
+        default:
+          hue = ((redNorm - greenNorm) / delta) + 4;
+          break;
+      }
+      hue = (hue * 60 + 360) % 360;
+    }
+
+    return [hue, saturation, lightness];
+  },
+
+  hslToRgb(hue, saturation, lightness) {
+    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+    const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const m = lightness - (chroma / 2);
+    let redPrime = 0;
+    let greenPrime = 0;
+    let bluePrime = 0;
+
+    if (hue < 60) {
+      redPrime = chroma; greenPrime = x;
+    } else if (hue < 120) {
+      redPrime = x; greenPrime = chroma;
+    } else if (hue < 180) {
+      greenPrime = chroma; bluePrime = x;
+    } else if (hue < 240) {
+      greenPrime = x; bluePrime = chroma;
+    } else if (hue < 300) {
+      redPrime = x; bluePrime = chroma;
+    } else {
+      redPrime = chroma; bluePrime = x;
+    }
+
+    return [
+      Math.round((redPrime + m) * 255),
+      Math.round((greenPrime + m) * 255),
+      Math.round((bluePrime + m) * 255)
+    ];
+  },
+
+  drawHeatmapZone(ctx, markers, width, height, color, dpr = 1) {
+    if (!markers.length) return;
+
+    const radius = width * this.getHeatmapRadiusFactor();
+    const colorMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!colorMatch) return;
+
+    const r = parseInt(colorMatch[1], 10);
+    const g = parseInt(colorMatch[2], 10);
+    const b = parseInt(colorMatch[3], 10);
+    const bufferDpr = Math.max(1, Math.min(dpr, this.HEATMAP_BUFFER_MAX_DPR || dpr));
+    const physicalWidth = Math.round(width * bufferDpr);
+    const physicalHeight = Math.round(height * bufferDpr);
+
+    const offscreen = document.createElement("canvas");
+    offscreen.width = physicalWidth;
+    offscreen.height = physicalHeight;
+    const offscreenCtx = offscreen.getContext("2d");
+    if (!offscreenCtx) return;
+    offscreenCtx.scale(bufferDpr, bufferDpr);
+    offscreenCtx.globalCompositeOperation = "lighter";
+
+    const centerOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_CENTER_OPACITY));
+    const midpointOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_MIDPOINT_OPACITY));
+    const outerOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_OUTER_OPACITY));
+    const edgeOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_EDGE_OPACITY));
+
+    markers.forEach(marker => {
+      const x = (marker.x / 100) * width;
+      const y = (marker.y / 100) * height;
+      const gradient = offscreenCtx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0.0, `rgba(0, 0, 0, ${centerOpacity.toFixed(3)})`);
+      gradient.addColorStop(0.35, `rgba(0, 0, 0, ${(centerOpacity * midpointOpacity).toFixed(3)})`);
+      gradient.addColorStop(0.7, `rgba(0, 0, 0, ${outerOpacity.toFixed(3)})`);
+      gradient.addColorStop(0.9, `rgba(0, 0, 0, ${edgeOpacity.toFixed(3)})`);
+      gradient.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+      offscreenCtx.fillStyle = gradient;
+      offscreenCtx.beginPath();
+      offscreenCtx.arc(x, y, radius, 0, Math.PI * 2);
+      offscreenCtx.fill();
+    });
+
+    let densityCanvas = offscreen;
+    let densityCtx = offscreenCtx;
+    const blurPx = Math.max(this.HEATMAP_MIN_BLUR_PX, radius * this.HEATMAP_BLUR_FACTOR);
+    const blurred = document.createElement("canvas");
+    blurred.width = physicalWidth;
+    blurred.height = physicalHeight;
+    const blurredCtx = blurred.getContext("2d");
+    if (blurredCtx) {
+      blurredCtx.scale(bufferDpr, bufferDpr);
+      blurredCtx.filter = `blur(${blurPx * bufferDpr}px)`;
+      blurredCtx.drawImage(offscreen, 0, 0, width, height);
+      blurredCtx.filter = "none";
+      densityCanvas = blurred;
+      densityCtx = blurredCtx;
+    }
+
+    const imageData = densityCtx.getImageData(0, 0, physicalWidth, physicalHeight);
+    const data = imageData.data;
+    const minOpacity = this.HEATMAP_MIN_OPACITY;
+    const maxOpacity = this.HEATMAP_MAX_OPACITY;
+    const opacityRange = maxOpacity - minOpacity;
+    const densityScale = Math.max(this.HEATMAP_MIN_DENSITY_SCALE, this.HEATMAP_DENSITY_SCALE || 1);
+    const baseHsl = this.rgbToHsl(r, g, b);
+    const isNeutralColor = baseHsl[1] < this.HEATMAP_NEUTRAL_SATURATION_THRESHOLD;
+    const maxTargetSaturation = isNeutralColor
+      ? Math.min(this.HEATMAP_NEUTRAL_MAX_SATURATION, baseHsl[1] + this.HEATMAP_NEUTRAL_SATURATION_BOOST)
+      : Math.max(0, Math.min(1, this.HEATMAP_TARGET_S_BOOST));
+    const minLightnessFactor = isNeutralColor
+      ? this.HEATMAP_NEUTRAL_MIN_LIGHTNESS_FACTOR
+      : this.HEATMAP_COLORED_MIN_LIGHTNESS_FACTOR;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i + 3];
+      if (!alpha) continue;
+
+      const ratio = Math.min(1, (alpha / 255) * densityScale);
+      const enhanced = Math.pow(ratio, this.HEATMAP_DENSITY_POWER);
+      const opacity = minOpacity + (enhanced * opacityRange);
+      const saturation = baseHsl[1] + ((maxTargetSaturation - baseHsl[1]) * enhanced);
+      const minLightness = Math.max(0, baseHsl[2] * minLightnessFactor);
+      const lightness = Math.max(minLightness, baseHsl[2] - (this.HEATMAP_TARGET_L_DROP * enhanced));
+      const [nextR, nextG, nextB] = this.hslToRgb(baseHsl[0], Math.min(1, saturation), lightness);
+
+      data[i] = nextR;
+      data[i + 1] = nextG;
+      data[i + 2] = nextB;
+      data[i + 3] = Math.round(Math.min(1, opacity) * 255);
+    }
+
+    densityCtx.putImageData(imageData, 0, 0);
+    const previousCompositeOperation = ctx.globalCompositeOperation;
+    const previousImageSmoothingEnabled = ctx.imageSmoothingEnabled;
+    const previousImageSmoothingQuality = ctx.imageSmoothingQuality;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(densityCanvas, 0, 0, width, height);
+    ctx.imageSmoothingEnabled = previousImageSmoothingEnabled;
+    ctx.imageSmoothingQuality = previousImageSmoothingQuality;
+    ctx.globalCompositeOperation = previousCompositeOperation;
   },
 
   renderMarkers() {
