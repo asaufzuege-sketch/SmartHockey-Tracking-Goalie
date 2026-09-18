@@ -10,6 +10,7 @@ App.seasonMap = {
         this.comparisonGoalie = "";
       }
       this.persistFilters();
+      this.renderFieldHeader();
       this.render();
     });
     document.getElementById("seasonMapCompareGoalie")?.addEventListener("change", (event) => {
@@ -18,6 +19,7 @@ App.seasonMap = {
         this.comparisonGoalie = "";
       }
       this.persistFilters();
+      this.renderFieldHeader();
       this.render();
     });
   },
@@ -111,10 +113,7 @@ App.seasonMap = {
     });
     const goaliesFromMarkers = new Set(byNormalized.values());
     Object.entries(this.getSeasonTimeData()).forEach(([key, goalieCounts]) => {
-      const buttonIndex = Number(String(key).split('_')[1]);
-      const isLegacyGoalieBucket = buttonIndex >= 4;
-      const mayBeGoalieOnlyData = goaliesFromMarkers.size === 0;
-      if (!isLegacyGoalieBucket && !mayBeGoalieOnlyData) return;
+      if (!/^(?:p[1-3]_[0-3]|sp[1-3]_[0-3])$/i.test(String(key))) return;
       Object.keys(goalieCounts || {}).forEach(addGoalie);
     });
     const roster = App.helpers.safeJSONParse(`playerSelectionData_${App.helpers.getCurrentTeamId()}`, []) || [];
@@ -174,6 +173,7 @@ App.seasonMap = {
   render() {
     this.populateGoalieFilter();
     this.populateCompareFilter();
+    this.renderFieldHeader();
     this.renderMarkers();
     this.renderTimeTracking();
     this.persistFilters();
@@ -211,6 +211,42 @@ App.seasonMap = {
         dot.dataset.markerType = marker.markerType || "save";
       });
     });
+  },
+
+  renderFieldHeader() {
+    const fieldBox = document.getElementById("seasonFieldBox");
+    if (!fieldBox) return;
+    const timeData = this.getSeasonTimeData();
+    const periodTotal = (period) => {
+      let total = 0;
+      for (let index = 0; index < 4; index += 1) {
+        const key = `${period}_${index}`;
+        const legacyKey = `s${period}_${index}`;
+        const goalieCounts = timeData[key] || timeData[legacyKey] || {};
+        total += this.getGoalieCount(goalieCounts, this.selectedGoalie);
+      }
+      return total;
+    };
+    const periodSections = [
+      { key: "p1", label: "P1" },
+      { key: "p2", label: "P2" },
+      { key: "p3", label: "P3" }
+    ];
+    let header = fieldBox.querySelector(".field-header");
+    if (!header) {
+      header = document.createElement("div");
+      header.className = "field-header";
+      header.setAttribute("role", "note");
+      fieldBox.appendChild(header);
+    }
+    const goalieLabel = this.selectedGoalie || "All";
+    const periodSummary = periodSections
+      .map(period => `${period.label}: ${periodTotal(period.key)}`)
+      .join(" • ");
+    const nextText = `Goalie: ${goalieLabel} • ${periodSummary}`;
+    if (header.textContent !== nextText) {
+      header.textContent = nextText;
+    }
   },
 
   renderTimeTracking() {

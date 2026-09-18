@@ -4,8 +4,8 @@
   --header-bg: #1E1E1E;
   --row-even: #f0f0f0;
   --row-odd: #e0e0e0;
-  --page-title-start: #833031;
-  --page-title-end: #833031;
+  --page-title-start: #5F0FFF;
+  --page-title-end: #5F0FFF;
   --cell-pos-color: #00c06f;
   --cell-neg-color: #ff4c4c;
   --cell-zero-color: #000000;
@@ -14,8 +14,8 @@
   --timer-active-color: #005c2f;
   --timer-left-bg: #2A2F36;
   --sticky-header-height: 56px;
-  --ice-top: #833031;
-  --ice-bottom: #833031;
+  --ice-top: #5F0FFF;
+  --ice-bottom: #5F0FFF;
   --half-rink-aspect-width: 428;
   --half-rink-aspect-height: 413;
   
@@ -621,10 +621,10 @@ th .sort-arrow { font-size: 0.7rem; color: #ddd }
   margin-bottom: 32px;  /* Abstand nach unten zur Momentum-Grafik */
 }
 
-/* Season Map: Goal-Spalte auf Grid umstellen, Timebox kleiner */
+/* Season Map goal column */
 #seasonMapPage .goal-column {
-  display: grid;
-  grid-template-rows: 1fr 1fr 0.75fr; /* 2x Tore, kleinerer Anteil Timebox */
+  display: flex;
+  flex-direction: column;
   gap: 15px;
 }
 
@@ -647,20 +647,10 @@ th .sort-arrow { font-size: 0.7rem; color: #ddd }
 /* Mindesthöhe für Torbilder - Goal Map */
 /* Removed - using flex: 1 instead */
 
-/* Bilder EXAKT wie Goal Map */
+/* Keep season map box overlays positioned correctly */
 #seasonMapPage .img-box {
   position: relative;
-  flex: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 0;  /* Allow flex to control size */
-  height: 100%;  /* Volle Höhe nutzen */
-  overflow: hidden; /* Versteckt überstehende Teile */
 }
-
-/* Mindesthöhe für Torbilder - Season Map */
-/* Removed - using flex: 1 instead */
 
 /* Container muss position relative haben für Heatmap */
 #seasonFieldBox {
@@ -3769,7 +3759,6 @@ h3.info-title {
   #seasonMapPage .field-column { flex: 1 1 50%; min-width: 0; }
   #seasonMapPage .goal-column  { flex: 1 1 50%; min-width: 0; gap: 15px; }
 
-  #seasonMapPage .field-box,
   #seasonMapPage .goal-img-box {
     height: 100%;
     min-height: 0;
@@ -3797,7 +3786,6 @@ h3.info-title {
   #seasonMapPage .field-column { flex: 1 1 50%; min-width: 0; }
   #seasonMapPage .goal-column  { flex: 1 1 50%; min-width: 0; gap: 12px; }
 
-  #seasonMapPage .field-box,
   #seasonMapPage .goal-img-box {
     height: 100%;
     min-height: 0;
@@ -3823,7 +3811,6 @@ h3.info-title {
     margin-bottom: 16px;
   }
 
-  #seasonMapPage .field-box,
   #seasonMapPage .goal-img-box {
     width: 100%;
     max-width: 100%;
@@ -3840,8 +3827,7 @@ h3.info-title {
 }
 
 /* Images fill their boxes without clipping */
-#seasonMapPage .goal-img-box img,
-#seasonMapPage .field-box img {
+#seasonMapPage .goal-img-box img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -4128,7 +4114,7 @@ h3.info-title {
 .price-amount {
   font-size: 3rem;
   font-weight: 700;
-  color: #833031;
+  color: #5F0FFF;
 }
 .price-period {
   font-size: 1.2rem;
@@ -4150,7 +4136,7 @@ h3.info-title {
   display: block;
   width: 100%;
   padding: 1rem;
-  background: linear-gradient(135deg, #833031, #a64a4b);
+  background: linear-gradient(135deg, #5F0FFF, #7d49ff);
   color: #fff;
   font-size: 1.1rem;
   font-weight: 600;
@@ -4168,7 +4154,7 @@ h3.info-title {
   width: 100%;
   padding: 0.8rem;
   background: transparent;
-  color: #833031;
+  color: #5F0FFF;
   font-size: 0.95rem;
   border: 1px solid rgba(79, 195, 247, 0.3);
   border-radius: 12px;
@@ -4226,7 +4212,7 @@ body.locked {
 #goalieSelectionPage input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #833031;
+  accent-color: #5F0FFF;
 }
 
 .top-btn.goalie-selection-btn {
@@ -4247,7 +4233,7 @@ body.locked {
   grid-template-columns: auto 90px minmax(180px, 1fr) 56px;
   gap: 10px;
   align-items: center;
-  border: 1px solid #833031 !important;
+  border: 1px solid #5F0FFF !important;
 }
 
 .goalie-tracking-layout {
@@ -4283,7 +4269,7 @@ body.locked {
   max-width: 680px;
   background: var(--header-bg);
   color: #fff;
-  border: 1px solid #833031;
+  border: 1px solid #5F0FFF;
   border-radius: 12px;
   padding: 16px 18px;
   text-align: center;
@@ -4298,12 +4284,35 @@ body.locked {
 /* Follow-up fixes #4 */
 #goalieSelectionPage .player-list input[type="checkbox"],
 #goalieSelectionPage input[type="checkbox"] {
-  accent-color: #833031 !important;
+  accent-color: #5F0FFF !important;
 }
 
 #goalieSelectionPage .player-list .pos-fixed,
 #goalieSelectionPage .player-list .position-box {
-  color: #833031 !important;
+  color: #5F0FFF !important;
+}
+
+#seasonFieldBox .field-header {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 6;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(95, 15, 255, 0.6);
+  background: rgba(17, 17, 17, 0.8);
+  color: #5F0FFF;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+#seasonMapPage #seasonFieldBox.half-rink-box img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center bottom !important;
 }
 
 #fieldBox.half-rink-box,

@@ -78,15 +78,16 @@
       }
     });
     while (values.length < 12) values.push(0);
-    return values.slice(0, 12);
+    return { values: values.slice(0, 12), timeData };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const values = readValuesFromStorage();
-    if (values.every(value => Number(value || 0) === 0)) {
+    const { values, timeData } = readValuesFromStorage();
+    const hasStoredData = Object.keys(timeData || {}).some(key => /^s?p[1-3]_[0-3]$/.test(String(key)));
+    if (!hasStoredData) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }

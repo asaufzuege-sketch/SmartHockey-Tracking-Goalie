@@ -109,7 +109,11 @@ App.goalMap = {
 
         if (box === this.goalBox) {
           const sampler = App.markerHandler.createImageSampler(img);
-          if (sampler?.valid && !sampler.isNeutralWhiteAt(pos.xPct, pos.yPct, 190, 45)) return;
+          if (sampler?.valid) {
+            const isAllowedGoalArea = sampler.isNeutralWhiteAt(pos.xPct, pos.yPct, 180, 60)
+              || sampler.isWhiteAt(pos.xPct, pos.yPct, 185);
+            if (!isAllowedGoalArea) return;
+          }
         }
 
         const dot = App.markerHandler.createMarkerPercent(
@@ -217,8 +221,17 @@ App.goalMap = {
   syncGoalMapDataFromMarkers() {
     const teamId = App.helpers.getCurrentTeamId();
     const markers = this.getCurrentMarkersFromDOM();
-    const fieldMarkers = markers[0] || [];
-    const goalMarkers = markers[1] || [];
+    const boxes = Array.from(document.querySelectorAll(App.selectors.torbildBoxes));
+    const fieldMarkers = [];
+    const goalMarkers = [];
+    markers.forEach((boxMarkers, index) => {
+      const boxId = boxes[index]?.id || "";
+      if (boxId === this.fieldBox?.id) {
+        fieldMarkers.push(...(boxMarkers || []));
+      } else if (boxId === this.goalBox?.id) {
+        goalMarkers.push(...(boxMarkers || []));
+      }
+    });
     const goalMapData = {};
     const rinkCountData = {};
 
@@ -383,6 +396,7 @@ App.goalMap = {
     AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
     AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
     AppStorage.setItem(`seasonMapLastExportHash_${teamId}`, exportHash);
+    App.seasonMap?.renderMomentumGraphic?.();
   },
 
   exportGoalMap() {
