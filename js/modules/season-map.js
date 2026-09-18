@@ -5,6 +5,7 @@ App.seasonMap = {
   resizeTimeout: null,
   viewportSyncListener: null,
   HEATMAP_RENDER_DELAY: 150,
+  HEATMAP_VIEWPORT_SYNC_DELAY: 100,
   HEATMAP_RADIUS_FACTOR: 0.12,
   HEATMAP_MIN_OPACITY: 0.15,
   HEATMAP_MAX_OPACITY: 0.98,
@@ -249,7 +250,7 @@ App.seasonMap = {
       this.resizeTimeout = setTimeout(() => {
         App.markerHandler?.repositionMarkers?.();
         this.renderHeatmap();
-      }, 100);
+      }, this.HEATMAP_VIEWPORT_SYNC_DELAY);
     };
 
     window.addEventListener("resize", this.viewportSyncListener);
