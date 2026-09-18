@@ -23,10 +23,22 @@ App.seasonMap = {
     }));
   },
 
+  getStoredActiveGoalieName() {
+    const rawValue = AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`);
+    if (!rawValue) return "";
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (typeof parsed === "string") return parsed;
+      return String(parsed?.name || "");
+    } catch (e) {
+      return String(rawValue || "");
+    }
+  },
+
   getActiveGoalieName() {
     return this.resolveGoalieName(
       App.goalMap?.getActiveGoalie?.()?.name
-      || AppStorage.getItem(`goalMapActiveGoalie_${App.helpers.getCurrentTeamId()}`)
+      || this.getStoredActiveGoalieName()
       || ""
     );
   },
