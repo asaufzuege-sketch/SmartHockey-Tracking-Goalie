@@ -111,10 +111,7 @@ App.seasonMap = {
     });
     const goaliesFromMarkers = new Set(byNormalized.values());
     Object.entries(this.getSeasonTimeData()).forEach(([key, goalieCounts]) => {
-      const buttonIndex = Number(String(key).split('_')[1]);
-      const isLegacyGoalieBucket = buttonIndex >= 4;
-      const mayBeGoalieOnlyData = goaliesFromMarkers.size === 0;
-      if (!isLegacyGoalieBucket && !mayBeGoalieOnlyData) return;
+      if (!/^(?:p[1-3]_[0-3]|sp[1-3]_[0-3])$/i.test(String(key))) return;
       Object.keys(goalieCounts || {}).forEach(addGoalie);
     });
     const roster = App.helpers.safeJSONParse(`playerSelectionData_${App.helpers.getCurrentTeamId()}`, []) || [];
@@ -232,6 +229,8 @@ App.seasonMap = {
     if (!header) {
       header = document.createElement("div");
       header.className = "field-header";
+      header.setAttribute("role", "status");
+      header.setAttribute("aria-live", "polite");
       fieldBox.appendChild(header);
     }
     const goalieLabel = this.selectedGoalie || "All";
