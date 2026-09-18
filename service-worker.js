@@ -4,15 +4,15 @@ const CACHE_NAME = 'smarthockey-goalie-v' + CACHE_VERSION;
 const imageUrlsToCacheIndividually = [
   './Spielfeld Overlay.png',
   './Tor Rot.png',
-  './icons/icon-48.png?v=' + CACHE_VERSION,
-  './icons/icon-72.png?v=' + CACHE_VERSION,
-  './icons/icon-96.png?v=' + CACHE_VERSION,
-  './icons/icon-128.png?v=' + CACHE_VERSION,
-  './icons/icon-144.png?v=' + CACHE_VERSION,
-  './icons/icon-152.png?v=' + CACHE_VERSION,
-  './icons/icon-192.png?v=' + CACHE_VERSION,
-  './icons/icon-384.png?v=' + CACHE_VERSION,
-  './icons/icon-512.png?v=' + CACHE_VERSION
+  './icons/icon-48.png',
+  './icons/icon-72.png',
+  './icons/icon-96.png',
+  './icons/icon-128.png',
+  './icons/icon-144.png',
+  './icons/icon-152.png',
+  './icons/icon-192.png',
+  './icons/icon-384.png',
+  './icons/icon-512.png'
 ];
 
 const imageUrlsToCacheIndividuallySet = new Set(imageUrlsToCacheIndividually);
