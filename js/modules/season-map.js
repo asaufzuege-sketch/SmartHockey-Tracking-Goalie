@@ -299,6 +299,7 @@ App.seasonMap = {
       this.comparisonGoalie = this.resolveGoalieName(select.value || "");
       this.persistFilters();
       this.render();
+      App.seasonTable?.render?.();
     });
 
     select.dataset.bound = "true";
