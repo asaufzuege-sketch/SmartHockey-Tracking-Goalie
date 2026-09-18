@@ -1,10 +1,9 @@
 (function () {
   const SVG_W = 430;
   const SVG_H = 230;
-  const MARGIN = { left: 28, right: 18, top: 16, bottom: 18 };
+  const MARGIN = { left: 28, right: 18, top: 16, bottom: 44 };
   const TOP_GUIDE_Y = 34;
-  const MIDLINE_Y = 102;
-  const BOTTOM_GUIDE_Y = SVG_H - 18;
+  const MIDLINE_Y = SVG_H - MARGIN.bottom;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
   const BUCKET_KEY_RE = /^(?:p|sp)[1-3]_[0-3]$/i;
@@ -19,8 +18,9 @@
   }
 
   function valueToYConceded(value, maxScale) {
-    const usableH = BOTTOM_GUIDE_Y - MIDLINE_Y;
-    return MIDLINE_Y + ((Number(value || 0) || 0) / maxScale) * usableH;
+    const topSpace = MIDLINE_Y - TOP_GUIDE_Y;
+    const t = (Number(value || 0) || 0) / maxScale;
+    return MIDLINE_Y - t * topSpace;
   }
 
   function catmullRom2bezier(points) {
@@ -139,16 +139,15 @@
       svg.appendChild(el);
     };
 
-    line(minuteToX(0), TOP_GUIDE_Y, minuteToX(60), TOP_GUIDE_Y, "#ffffff", "3");
+    line(minuteToX(0), TOP_GUIDE_Y, minuteToX(60), TOP_GUIDE_Y, "#ffffff", "1");
     line(minuteToX(0), MIDLINE_Y, minuteToX(60), MIDLINE_Y, "#7a7a7a", "3");
-    line(minuteToX(0), BOTTOM_GUIDE_Y, minuteToX(60), BOTTOM_GUIDE_Y, "#d6d6d6", "2");
 
     const majorSet = new Set([0, 20, 40, 60]);
     for (let minute = 0; minute <= 60; minute += 5) {
       const x = minuteToX(minute);
       const isMajor = majorSet.has(minute);
-      line(x, TOP_GUIDE_Y - (isMajor ? 18 : 8), x, TOP_GUIDE_Y + (isMajor ? 18 : 8), "#cccccc", isMajor ? "1.6" : "1");
-      text(x, TOP_GUIDE_Y + (isMajor ? 22 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
+      line(x, MIDLINE_Y, x, MIDLINE_Y + (isMajor ? 13 : 8), "#cccccc", isMajor ? "1.6" : "1");
+      text(x, MIDLINE_Y + (isMajor ? 23 : 18), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
     }
 
     if (values.some(value => Number(value || 0) > 0)) {

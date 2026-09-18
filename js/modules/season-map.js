@@ -611,6 +611,33 @@ App.seasonMap = {
     return "br";
   },
 
+  getRoundedGoalZonePercents(zoneStats, totalGoals) {
+    if (!totalGoals) return {};
+    const percentEntries = this.GOAL_ZONE_LABELS.map(zone => {
+      const goals = zoneStats[zone.key]?.goals || 0;
+      const exact = (goals / totalGoals) * 100;
+      return { key: zone.key, exact, rounded: Math.round(exact) };
+    });
+    let diff = 100 - percentEntries.reduce((sum, entry) => sum + entry.rounded, 0);
+    if (diff !== 0) {
+      const sorted = [...percentEntries].sort((a, b) => (
+        diff > 0
+          ? (b.exact - b.rounded) - (a.exact - a.rounded)
+          : (a.exact - a.rounded) - (b.exact - b.rounded)
+      ));
+      let index = 0;
+      while (diff !== 0 && sorted.length > 0) {
+        sorted[index % sorted.length].rounded += diff > 0 ? 1 : -1;
+        diff += diff > 0 ? -1 : 1;
+        index += 1;
+      }
+    }
+    return percentEntries.reduce((acc, entry) => {
+      acc[entry.key] = entry.rounded;
+      return acc;
+    }, {});
+  },
+
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
@@ -635,29 +662,39 @@ App.seasonMap = {
     }
     this.pendingGoalAreaImage = null;
 
-    const zoneCounts = { tl: 0, tr: 0, bl: 0, bm: 0, br: 0 };
+    const zoneStats = {
+      tl: { goals: 0, saves: 0 },
+      tr: { goals: 0, saves: 0 },
+      bl: { goals: 0, saves: 0 },
+      bm: { goals: 0, saves: 0 },
+      br: { goals: 0, saves: 0 }
+    };
 
     goalBox.querySelectorAll(".marker-dot").forEach(marker => {
       if (marker.style.display === "none") return;
       if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return;
 
-      const isGoal = (marker.dataset.markerType || "").toLowerCase() === "goal";
-      if (!isGoal) return;
-
+      const markerType = (marker.dataset.markerType || "").toLowerCase();
+      if (markerType !== "goal" && markerType !== "save") return;
       const xPctImage = parseFloat(marker.dataset.xPctImage);
       const yPctImage = parseFloat(marker.dataset.yPctImage);
       if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
 
       const zoneKey = this.getGoalAreaZoneKey(xPctImage, yPctImage);
-      if (zoneKey) zoneCounts[zoneKey] += 1;
+      if (!zoneKey || !zoneStats[zoneKey]) return;
+      if (markerType === "goal") zoneStats[zoneKey].goals += 1;
+      if (markerType === "save") zoneStats[zoneKey].saves += 1;
     });
 
-    const totalGoals = Object.values(zoneCounts).reduce((sum, count) => sum + count, 0);
-    if (totalGoals === 0) return;
+    const totalGoals = Object.values(zoneStats).reduce((sum, stats) => sum + stats.goals, 0);
+    const percentByZone = this.getRoundedGoalZonePercents(zoneStats, totalGoals);
 
     this.GOAL_ZONE_LABELS.forEach(zone => {
-      const count = zoneCounts[zone.key] || 0;
-      const percent = totalGoals ? Math.round((count / totalGoals) * 100) : 0;
+      const goals = zoneStats[zone.key]?.goals || 0;
+      const saves = zoneStats[zone.key]?.saves || 0;
+      const shots = goals + saves;
+      const percent = totalGoals ? (percentByZone[zone.key] || 0) : 0;
+      const savePercentText = shots > 0 ? `SV ${Math.round((saves / shots) * 100)}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
         goalImg,
@@ -670,7 +707,14 @@ App.seasonMap = {
       label.setAttribute("aria-hidden", "true");
       label.style.left = `${position.xPct}%`;
       label.style.top = `${position.yPct}%`;
-      label.textContent = `${count} · ${percent}%`;
+      const line1 = document.createElement("span");
+      line1.className = "goal-area-label-line goal-area-label-line-primary";
+      line1.textContent = `${goals} · ${percent}%`;
+      const line2 = document.createElement("span");
+      line2.className = "goal-area-label-line goal-area-label-line-secondary";
+      line2.textContent = savePercentText;
+      label.appendChild(line1);
+      label.appendChild(line2);
       goalBox.appendChild(label);
     });
   },
