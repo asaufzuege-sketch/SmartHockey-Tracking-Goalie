@@ -249,7 +249,7 @@ App.seasonMap = {
       clearTimeout(this.resizeTimeout);
       this.resizeTimeout = setTimeout(() => {
         App.markerHandler?.repositionMarkers?.();
-        this.renderHeatmap();
+        this.scheduleHeatmapRender();
       }, this.HEATMAP_VIEWPORT_SYNC_DELAY);
     };
 
@@ -378,6 +378,65 @@ App.seasonMap = {
     return this.HEATMAP_RADIUS_FACTOR;
   },
 
+  rgbToHsl(red, green, blue) {
+    const redNorm = red / 255;
+    const greenNorm = green / 255;
+    const blueNorm = blue / 255;
+    const max = Math.max(redNorm, greenNorm, blueNorm);
+    const min = Math.min(redNorm, greenNorm, blueNorm);
+    const delta = max - min;
+    let hue = 0;
+    let saturation = 0;
+    const lightness = (max + min) / 2;
+
+    if (delta !== 0) {
+      saturation = delta / (1 - Math.abs((2 * lightness) - 1));
+      switch (max) {
+        case redNorm:
+          hue = ((greenNorm - blueNorm) / delta) % 6;
+          break;
+        case greenNorm:
+          hue = ((blueNorm - redNorm) / delta) + 2;
+          break;
+        default:
+          hue = ((redNorm - greenNorm) / delta) + 4;
+          break;
+      }
+      hue = (hue * 60 + 360) % 360;
+    }
+
+    return [hue, saturation, lightness];
+  },
+
+  hslToRgb(hue, saturation, lightness) {
+    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+    const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const m = lightness - (chroma / 2);
+    let redPrime = 0;
+    let greenPrime = 0;
+    let bluePrime = 0;
+
+    if (hue < 60) {
+      redPrime = chroma; greenPrime = x;
+    } else if (hue < 120) {
+      redPrime = x; greenPrime = chroma;
+    } else if (hue < 180) {
+      greenPrime = chroma; bluePrime = x;
+    } else if (hue < 240) {
+      greenPrime = x; bluePrime = chroma;
+    } else if (hue < 300) {
+      redPrime = x; bluePrime = chroma;
+    } else {
+      redPrime = chroma; bluePrime = x;
+    }
+
+    return [
+      Math.round((redPrime + m) * 255),
+      Math.round((greenPrime + m) * 255),
+      Math.round((bluePrime + m) * 255)
+    ];
+  },
+
   drawHeatmapZone(ctx, markers, width, height, color, dpr = 1) {
     if (!markers.length) return;
 
@@ -435,68 +494,13 @@ App.seasonMap = {
       densityCtx = blurredCtx;
     }
 
-    const rgbToHsl = (red, green, blue) => {
-      const redNorm = red / 255;
-      const greenNorm = green / 255;
-      const blueNorm = blue / 255;
-      const max = Math.max(redNorm, greenNorm, blueNorm);
-      const min = Math.min(redNorm, greenNorm, blueNorm);
-      const delta = max - min;
-      let hue = 0;
-      let saturation = 0;
-      const lightness = (max + min) / 2;
-      if (delta !== 0) {
-        saturation = delta / (1 - Math.abs((2 * lightness) - 1));
-        switch (max) {
-          case redNorm:
-            hue = ((greenNorm - blueNorm) / delta) % 6;
-            break;
-          case greenNorm:
-            hue = ((blueNorm - redNorm) / delta) + 2;
-            break;
-          default:
-            hue = ((redNorm - greenNorm) / delta) + 4;
-            break;
-        }
-        hue = (hue * 60 + 360) % 360;
-      }
-      return [hue, saturation, lightness];
-    };
-
-    const hslToRgb = (hue, saturation, lightness) => {
-      const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
-      const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
-      const m = lightness - (chroma / 2);
-      let redPrime = 0;
-      let greenPrime = 0;
-      let bluePrime = 0;
-      if (hue < 60) {
-        redPrime = chroma; greenPrime = x;
-      } else if (hue < 120) {
-        redPrime = x; greenPrime = chroma;
-      } else if (hue < 180) {
-        greenPrime = chroma; bluePrime = x;
-      } else if (hue < 240) {
-        greenPrime = x; bluePrime = chroma;
-      } else if (hue < 300) {
-        redPrime = x; bluePrime = chroma;
-      } else {
-        redPrime = chroma; bluePrime = x;
-      }
-      return [
-        Math.round((redPrime + m) * 255),
-        Math.round((greenPrime + m) * 255),
-        Math.round((bluePrime + m) * 255)
-      ];
-    };
-
     const imageData = densityCtx.getImageData(0, 0, physicalWidth, physicalHeight);
     const data = imageData.data;
     const minOpacity = this.HEATMAP_MIN_OPACITY;
     const maxOpacity = this.HEATMAP_MAX_OPACITY;
     const opacityRange = maxOpacity - minOpacity;
     const densityScale = Math.max(this.HEATMAP_MIN_DENSITY_SCALE, this.HEATMAP_DENSITY_SCALE || 1);
-    const baseHsl = rgbToHsl(r, g, b);
+    const baseHsl = this.rgbToHsl(r, g, b);
     const isNeutralColor = baseHsl[1] < this.HEATMAP_NEUTRAL_SATURATION_THRESHOLD;
     const maxTargetSaturation = isNeutralColor
       ? Math.min(this.HEATMAP_NEUTRAL_MAX_SATURATION, baseHsl[1] + this.HEATMAP_NEUTRAL_SATURATION_BOOST)
@@ -515,7 +519,7 @@ App.seasonMap = {
       const saturation = baseHsl[1] + ((maxTargetSaturation - baseHsl[1]) * enhanced);
       const minLightness = Math.max(0, baseHsl[2] * minLightnessFactor);
       const lightness = Math.max(minLightness, baseHsl[2] - (this.HEATMAP_TARGET_L_DROP * enhanced));
-      const [nextR, nextG, nextB] = hslToRgb(baseHsl[0], Math.min(1, saturation), lightness);
+      const [nextR, nextG, nextB] = this.hslToRgb(baseHsl[0], Math.min(1, saturation), lightness);
 
       data[i] = nextR;
       data[i + 1] = nextG;
