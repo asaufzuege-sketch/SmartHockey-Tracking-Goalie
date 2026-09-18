@@ -5,6 +5,7 @@ App.seasonMap = {
   resizeTimeout: null,
   viewportSyncListener: null,
   pendingHeatmapImage: null,
+  pendingGoalAreaImage: null,
   HEATMAP_RENDER_DELAY: 150,
   HEATMAP_VIEWPORT_SYNC_DELAY: 100,
   HEATMAP_RADIUS_FACTOR: 0.12,
@@ -619,6 +620,21 @@ App.seasonMap = {
     if (!selectedGoalie) return;
 
     const goalImg = goalBox.querySelector("img");
+    if (!goalImg) return;
+    if (!goalImg.complete || !goalImg.naturalWidth || !goalImg.naturalHeight) {
+      if (this.pendingGoalAreaImage !== goalImg) {
+        this.pendingGoalAreaImage = goalImg;
+        goalImg.addEventListener("load", () => {
+          if (this.pendingGoalAreaImage === goalImg) {
+            this.pendingGoalAreaImage = null;
+          }
+          this.renderGoalAreaStats();
+        }, { once: true });
+      }
+      return;
+    }
+    this.pendingGoalAreaImage = null;
+
     const zoneCounts = { tl: 0, tr: 0, bl: 0, bm: 0, br: 0 };
     const seen = new Set();
 
@@ -660,10 +676,11 @@ App.seasonMap = {
         zone.anchorX,
         zone.anchorY
       );
+      if (!position?.valid) return;
       const label = document.createElement("div");
       label.className = "goal-area-label";
-      label.style.left = `${position?.valid ? position.xPct : zone.anchorX}%`;
-      label.style.top = `${position?.valid ? position.yPct : zone.anchorY}%`;
+      label.style.left = `${position.xPct}%`;
+      label.style.top = `${position.yPct}%`;
       label.textContent = `${count} · ${percent}%`;
       goalBox.appendChild(label);
     });
