@@ -219,14 +219,19 @@ App.seasonMap = {
   populateCompareFilter() {
     const select = document.getElementById("seasonMapCompareGoalie");
     if (!select) return;
+    select.innerHTML = '<option value="">+ Compare goalie</option>';
+
+    if (!this.selectedGoalie) {
+      select.disabled = true;
+      this.comparisonGoalie = "";
+      return;
+    }
 
     const savedValue = this.resolveGoalieName(this.comparisonGoalie);
     let goalies = this.getComparableGoalies();
     if (goalies.length === 0) {
       goalies = this.getAvailableGoalies().filter(goalie => goalie !== this.selectedGoalie);
     }
-
-    select.innerHTML = '<option value="">+ Compare goalie</option>';
     goalies.forEach(goalie => {
       const option = document.createElement("option");
       option.value = goalie;
