@@ -640,7 +640,6 @@ App.seasonMap = {
     this.pendingGoalAreaImage = null;
 
     const zoneCounts = { tl: 0, tr: 0, bl: 0, bm: 0, br: 0 };
-    const seen = new Set();
 
     goalBox.querySelectorAll(".marker-dot").forEach(marker => {
       if (marker.style.display === "none") return;
@@ -652,16 +651,6 @@ App.seasonMap = {
       const xPctImage = parseFloat(marker.dataset.xPctImage);
       const yPctImage = parseFloat(marker.dataset.yPctImage);
       if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
-
-      const dedupeKey = [
-        xPctImage.toFixed(2),
-        yPctImage.toFixed(2),
-        marker.dataset.player || "",
-        marker.dataset.period || "",
-        marker.dataset.markerType || ""
-      ].join("\0");
-      if (seen.has(dedupeKey)) return;
-      seen.add(dedupeKey);
 
       const zoneKey = this.getGoalAreaZoneKey(xPctImage, yPctImage);
       if (zoneKey) zoneCounts[zoneKey] += 1;

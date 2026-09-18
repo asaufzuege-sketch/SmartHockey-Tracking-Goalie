@@ -80,9 +80,9 @@
     const hasAnyBucketData = recognizedKeys.some(key => {
       const entry = timeData?.[key];
       if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-        return Object.keys(entry).length > 0;
+        return Object.values(entry).some(value => Number(value || 0) > 0);
       }
-      return entry !== null && entry !== undefined && entry !== "";
+      return Number(entry || 0) > 0;
     });
     return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData };
   }
