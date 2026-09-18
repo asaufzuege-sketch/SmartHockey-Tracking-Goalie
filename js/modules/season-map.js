@@ -503,7 +503,7 @@ App.seasonMap = {
     const blurredCtx = blurred.getContext("2d");
     if (blurredCtx) {
       blurredCtx.scale(bufferDpr, bufferDpr);
-      blurredCtx.filter = `blur(${blurPx}px)`;
+      blurredCtx.filter = `blur(${blurPx * bufferDpr}px)`;
       blurredCtx.drawImage(offscreen, 0, 0, width, height);
       blurredCtx.filter = "none";
       densityCanvas = blurred;
