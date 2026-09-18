@@ -688,6 +688,28 @@ th .sort-arrow { font-size: 0.7rem; color: #ddd }
   box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
 
+#seasonMapPage .goal-area-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #ffffff;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: clamp(10px, 1.25vw, 14px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
 /* Marker: ALLE dunkelgrau, scharfer Rand, gleiche Optik für Feld & Tor */
 /* Default: 14px for Goal Map, overridden to 8px for Season Map below */
 .marker-dot {
