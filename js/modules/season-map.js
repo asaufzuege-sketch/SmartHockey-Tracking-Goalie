@@ -590,7 +590,11 @@ App.seasonMap = {
           marker.player || null
         );
         dot.dataset.period = marker.period || "p1";
-        dot.dataset.markerType = marker.markerType || (index === 1 ? "goal" : "save");
+        dot.dataset.markerType = marker.markerType || (
+          marker.color === "#c62828" || marker.color === "rgb(198, 40, 40)"
+            ? "goal"
+            : "save"
+        );
       });
     });
   },

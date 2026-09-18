@@ -91,8 +91,9 @@
     const container = getContainer();
     if (!container) return;
 
-    const { values, recognizedKeys, hasAnyBucketData } = readValuesFromStorage();
-    if (!recognizedKeys.length || !hasAnyBucketData) {
+    const { values, hasAnyBucketData } = readValuesFromStorage();
+    const hasVisibleValues = values.some(value => Number(value || 0) > 0);
+    if (!hasAnyBucketData && !hasVisibleValues) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }
