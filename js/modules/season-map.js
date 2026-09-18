@@ -4,6 +4,7 @@ App.seasonMap = {
   heatmapRenderTimeout: null,
   resizeTimeout: null,
   viewportSyncListener: null,
+  pendingHeatmapImage: null,
   HEATMAP_RENDER_DELAY: 150,
   HEATMAP_VIEWPORT_SYNC_DELAY: 100,
   HEATMAP_RADIUS_FACTOR: 0.12,
@@ -337,9 +338,18 @@ App.seasonMap = {
     const img = fieldBox.querySelector("img");
     if (!img) return;
     if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
-      img.addEventListener("load", () => this.scheduleHeatmapRender(0), { once: true });
+      if (this.pendingHeatmapImage !== img) {
+        this.pendingHeatmapImage = img;
+        img.addEventListener("load", () => {
+          if (this.pendingHeatmapImage === img) {
+            this.pendingHeatmapImage = null;
+          }
+          this.scheduleHeatmapRender(0);
+        }, { once: true });
+      }
       return;
     }
+    this.pendingHeatmapImage = null;
 
     const canvasRect = this.getHeatmapCanvasRect(fieldBox, img);
     if (!canvasRect?.valid || !canvasRect.width || !canvasRect.height) return;
