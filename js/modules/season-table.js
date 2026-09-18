@@ -4,6 +4,7 @@
 App.seasonTable = {
   container: null,
   externalGoalieFilter: "",
+  externalComparisonGoalie: "",
   viewMode: "goalie",
   sortState: { index: null, asc: true },
   goalieSortState: { key: null, asc: true },
@@ -728,9 +729,17 @@ setStickyOffsets() {
   renderGoalieTable(fixedContainer, tableScrollWrapper, options = {}) {
     const withSeparator = options.withSeparator !== false;
     const goalieSeasonData = App.data.goalieSeasonData || {};
-    const goalieNames = Object.keys(goalieSeasonData).filter(name =>
+    const allGoalieNames = Object.keys(goalieSeasonData);
+    let goalieNames = allGoalieNames.filter(name =>
       !this.externalGoalieFilter || name === this.externalGoalieFilter
     );
+    if (this.externalGoalieFilter) {
+      goalieNames = [this.externalGoalieFilter];
+      if (this.externalComparisonGoalie && this.externalComparisonGoalie !== this.externalGoalieFilter) {
+        goalieNames.push(this.externalComparisonGoalie);
+      }
+      goalieNames = goalieNames.filter(name => allGoalieNames.includes(name));
+    }
 
     if (withSeparator) {
       // --- Dezente Trennung (ohne "GOALIES"-Text) ---
@@ -860,8 +869,6 @@ setStickyOffsets() {
     const MVP_W_GV = 1.5;   // Strafe je invertiertem GoalValue-Punkt pro Spiel
     const MVP_W_MIN = 0.02; // kleiner Einsatz-/Volumenbonus pro Minute
 
-    // Summen für Total-Zeile
-    const totals = { games: 0, minutesDec: 0, ga: 0, sa: 0 };
     const goalieRows = [];
 
     goalieNames.forEach((name, rowIndex) => {
@@ -885,11 +892,6 @@ setStickyOffsets() {
         + (minutesDec * MVP_W_MIN);
       mvpPoints = Math.max(0, mvpPoints);
       const mvpPointsRounded = Number(mvpPoints.toFixed(1));
-
-      totals.games += games;
-      totals.minutesDec += minutesDec;
-      totals.ga += ga;
-      totals.sa += sa;
 
       const rowClass = (rowIndex % 2 === 0) ? "even-row" : "odd-row";
       goalieRows.push({
@@ -926,7 +928,19 @@ setStickyOffsets() {
     };
 
     let displayGoalieRows = goalieRows.slice();
-    if (!this.goalieSortState.key) {
+    if (this.externalGoalieFilter && !this.goalieSortState.key) {
+      const ordered = [this.externalGoalieFilter, this.externalComparisonGoalie].filter(Boolean);
+      const orderedNormalized = ordered.map(name => String(name || "").trim().toLowerCase());
+      const getOrderIndex = (name) => orderedNormalized.indexOf(String(name || "").trim().toLowerCase());
+      displayGoalieRows.sort((a, b) => {
+        const ia = getOrderIndex(a.name);
+        const ib = getOrderIndex(b.name);
+        if (ia === -1 && ib === -1) return String(a.name || "").localeCompare(String(b.name || ""));
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+    } else if (!this.goalieSortState.key) {
       displayGoalieRows.sort((a, b) => (b.mvpPointsRounded || 0) - (a.mvpPointsRounded || 0));
     } else {
       const sortKey = this.goalieSortState.key;
@@ -1008,54 +1022,6 @@ setStickyOffsets() {
 
     goalieFixedTable.appendChild(gFixedTbody);
     goalieScrollTable.appendChild(gScrollTbody);
-
-    // Total/Summen-Zeile
-    if (goalieNames.length > 0) {
-      const totalSA = totals.sa;
-      const totalGA = totals.ga;
-      const totalSV = totalSA - totalGA;
-      const totalSvPct = totalSA > 0 ? `Ø ${((totalSV / totalSA) * 100).toFixed(1)}%` : "–";
-      const totalGAA = totals.minutesDec > 0 ? `Ø ${(totalGA * 60 / totals.minutesDec).toFixed(2)}` : "–";
-
-      const gFixedTfoot = document.createElement("tfoot");
-      const gScrollTfoot = document.createElement("tfoot");
-
-      const gFixedTotalTr = document.createElement("tr");
-      gFixedTotalTr.className = "total-row";
-      ["", "Total", ""].forEach((txt, i) => {
-        const td = document.createElement("td");
-        td.textContent = txt;
-        if (i === 1) { td.style.textAlign = "left"; td.style.fontWeight = "700"; }
-        gFixedTotalTr.appendChild(td);
-      });
-      gFixedTfoot.appendChild(gFixedTotalTr);
-
-      const gScrollTotalTr = document.createElement("tr");
-      gScrollTotalTr.className = "total-row";
-      // 11-Spalten total row: Games leer, MIN=Summe, GA/SA/SV=Summen, Sv%/GAA=Ø, rest leer
-      const totalCells = [
-        "",                                // 0: Games (leer)
-        formatMinutes(totals.minutesDec),  // 1: MIN
-        totalGA,                           // 2: GA
-        totalSA,                           // 3: SA
-        totalSV,                           // 4: SV
-        totalSvPct,                        // 5: Sv%
-        totalGAA,                          // 6: GAA
-        "",                                // 7: SO (leer)
-        "",                                // 8: Goal Value (leer)
-        "",                                // 9: MVP (leer)
-        ""                                 // 10: MVP Points (leer)
-      ];
-      totalCells.forEach(val => {
-        const td = document.createElement("td");
-        td.textContent = val;
-        gScrollTotalTr.appendChild(td);
-      });
-      gScrollTfoot.appendChild(gScrollTotalTr);
-
-      goalieFixedTable.appendChild(gFixedTfoot);
-      goalieScrollTable.appendChild(gScrollTfoot);
-    }
 
     fixedContainer.appendChild(goalieFixedTable);
     tableScrollWrapper.appendChild(goalieScrollTable);

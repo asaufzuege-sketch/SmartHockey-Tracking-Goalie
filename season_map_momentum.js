@@ -1,8 +1,8 @@
 (function () {
   const SVG_W = 900;
-  const SVG_H = 150;
-  const MARGIN = { left: 32, right: 32, top: 16, bottom: 44 };
-  const PLOT_TOP_Y = 30;
+  const SVG_H = 118;
+  const MARGIN = { left: 32, right: 32, top: 12, bottom: 38 };
+  const PLOT_TOP_Y = 14;
   const PLOT_BASELINE_Y = SVG_H - MARGIN.bottom;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
@@ -41,7 +41,11 @@
     return d;
   }
 
-  function getBucketValue(timeData, key, selectedGoalie, knownGoalies) {
+  function normalizeGoalieName(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function getBucketValue(timeData, key, selectedGoalie, knownGoaliesNormalized) {
     const legacyKey = key.replace(/^p/, "sp");
     const entry = timeData?.[key] ?? timeData?.[legacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
@@ -54,8 +58,8 @@
         return Number(entry[alias] || 0);
       }
       const keys = Object.keys(entry);
-      const keysToSum = knownGoalies.size
-        ? keys.filter(goalie => knownGoalies.has(goalie))
+      const keysToSum = knownGoaliesNormalized.size
+        ? keys.filter(goalie => knownGoaliesNormalized.has(normalizeGoalieName(goalie)))
         : keys;
       return keysToSum.reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
     }
@@ -66,11 +70,11 @@
     const app = globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
-    const knownGoalies = new Set(app?.seasonMap?.getAvailableGoalies?.() || []);
+    const knownGoaliesNormalized = new Set((app?.seasonMap?.getAvailableGoalies?.() || []).map(normalizeGoalieName));
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
-        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoalies));
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoaliesNormalized));
       }
     });
     while (values.length < 12) values.push(0);
@@ -82,6 +86,10 @@
     if (!container) return;
 
     const values = readValuesFromStorage();
+    if (values.every(value => Number(value || 0) === 0)) {
+      container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
+      return;
+    }
     const maxScale = Math.max(MAX_DISPLAY, ...values, 1);
     const points = values.map((value, index) => ({
       x: minuteToX(BUCKET_MINUTES[index]),
@@ -144,14 +152,6 @@
 
     positiveRuns.forEach(run => {
       const pathD = catmullRom2bezier(run.map(point => ({ x: point.x, y: point.y })));
-      const fill = document.createElementNS(svgNS, "path");
-      fill.setAttribute("d", `${pathD} L ${run[run.length - 1].x.toFixed(2)} ${PLOT_BASELINE_Y.toFixed(2)} L ${run[0].x.toFixed(2)} ${PLOT_BASELINE_Y.toFixed(2)} Z`);
-      fill.setAttribute("fill", "#f07d7d");
-      fill.setAttribute("stroke", "#7a7a7a");
-      fill.setAttribute("stroke-width", "0.9");
-      fill.setAttribute("stroke-linejoin", "round");
-      svg.appendChild(fill);
-
       const outline = document.createElementNS(svgNS, "path");
       outline.setAttribute("d", pathD);
       outline.setAttribute("fill", "none");
