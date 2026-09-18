@@ -52,6 +52,7 @@ App.seasonMap = {
   getRosterGoalies() {
     const roster = App.helpers.safeJSONParse(`playerSelectionData_${App.helpers.getCurrentTeamId()}`, []) || [];
     return roster
+      .filter(player => String(player?.position || "").toUpperCase() === "G" || player?.isGoalie === true)
       .map(player => String(player?.name || "").trim())
       .filter(Boolean);
   },

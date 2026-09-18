@@ -193,10 +193,19 @@ App.playerSelection = {
             App.showPage?.("selection");
           }
         });
-      } else {
+        return;
+      }
+
+      const shouldDiscard = confirm(
+        "Discard current game data and switch goalies?\n\nOK = Discard and switch\nCancel = Keep current goalie"
+      );
+      if (shouldDiscard) {
         App.goalMap?.reset?.(true);
         this.saveCurrentState(index);
+        return;
       }
+
+      this.render();
       return;
     }
 

@@ -1103,7 +1103,8 @@ setStickyOffsets() {
   },
 
   exportFromStats(options = {}) {
-    if (!App.data.selectedPlayers.length) {
+    const activeGoalie = App.goalMap?.getActiveGoalie?.() || App.data.selectedPlayers[0] || null;
+    if (!activeGoalie?.name) {
       alert("No active goalie selected.");
       return;
     }
