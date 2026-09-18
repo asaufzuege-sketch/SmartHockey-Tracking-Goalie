@@ -603,13 +603,20 @@ App.seasonMap = {
   resolveMarkerType(markerType, markerColor) {
     const normalizedType = String(markerType || "").trim().toLowerCase();
     if (normalizedType === "goal" || normalizedType === "save") return normalizedType;
-    const normalizedColor = String(markerColor || "").trim().toLowerCase();
-    if (
-      normalizedColor === "#c62828"
-      || normalizedColor === "rgb(198, 40, 40)"
-      || normalizedColor === "rgba(198, 40, 40, 1)"
-    ) {
-      return "goal";
+    const normalizedColor = String(markerColor || "").trim();
+    const hexMatch = normalizedColor.match(/^#([0-9a-f]{6})$/i);
+    if (hexMatch) {
+      const hex = hexMatch[1].toLowerCase();
+      if (hex === "c62828") return "goal";
+      return "save";
+    }
+    const rgbMatch = normalizedColor.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,[\d.]+)?\s*\)$/i);
+    if (rgbMatch) {
+      const red = Number(rgbMatch[1]);
+      const green = Number(rgbMatch[2]);
+      const blue = Number(rgbMatch[3]);
+      if (red === 198 && green === 40 && blue === 40) return "goal";
+      return "save";
     }
     return "save";
   },
@@ -728,11 +735,13 @@ App.seasonMap = {
       if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return sum;
       return this.resolveMarkerType(marker.dataset.markerType, marker.style.backgroundColor) === "goal" ? sum + 1 : sum;
     }, 0);
-    console.debug("[SeasonMap] goal-zone-goal-sum-check", {
-      selectedGoalie,
-      zoneGoalSum: totalGoals,
-      totalGoalMarkers
-    });
+    if (totalGoals !== totalGoalMarkers) {
+      console.debug("[SeasonMap] goal-zone-goal-sum-check", {
+        selectedGoalie,
+        zoneGoalSum: totalGoals,
+        totalGoalMarkers
+      });
+    }
     const percentByZone = this.getRoundedGoalZonePercents(zoneStats, totalGoals);
 
     this.GOAL_ZONE_LABELS.forEach(zone => {
