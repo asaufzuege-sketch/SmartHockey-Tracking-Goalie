@@ -26,6 +26,7 @@ App.seasonMap = {
   HEATMAP_COLORED_MIN_LIGHTNESS_FACTOR: 0.68,
   HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
   HEATMAP_MAX_DPR: 3,
+  HEATMAP_BUFFER_MAX_DPR: 2,
 
   init() {
     this.loadPersistedFilters();
@@ -332,7 +333,6 @@ App.seasonMap = {
     if (!fieldBox) return;
 
     clearTimeout(this.heatmapRenderTimeout);
-    fieldBox.querySelector(".heatmap-canvas")?.remove();
 
     const img = fieldBox.querySelector("img");
     if (!img) return;
@@ -345,7 +345,12 @@ App.seasonMap = {
     if (!canvasRect?.valid || !canvasRect.width || !canvasRect.height) return;
 
     const { goalMarkers, saveMarkers } = this.getHeatmapMarkers(fieldBox, img, canvasRect);
-    if (!goalMarkers.length && !saveMarkers.length) return;
+    if (!goalMarkers.length && !saveMarkers.length) {
+      fieldBox.querySelector(".heatmap-canvas")?.remove();
+      return;
+    }
+
+    fieldBox.querySelector(".heatmap-canvas")?.remove();
 
     const canvas = document.createElement("canvas");
     canvas.className = "heatmap-canvas";
@@ -447,15 +452,16 @@ App.seasonMap = {
     const r = parseInt(colorMatch[1], 10);
     const g = parseInt(colorMatch[2], 10);
     const b = parseInt(colorMatch[3], 10);
-    const physicalWidth = Math.round(width * dpr);
-    const physicalHeight = Math.round(height * dpr);
+    const bufferDpr = Math.max(1, Math.min(dpr, this.HEATMAP_BUFFER_MAX_DPR || dpr));
+    const physicalWidth = Math.round(width * bufferDpr);
+    const physicalHeight = Math.round(height * bufferDpr);
 
     const offscreen = document.createElement("canvas");
     offscreen.width = physicalWidth;
     offscreen.height = physicalHeight;
     const offscreenCtx = offscreen.getContext("2d");
     if (!offscreenCtx) return;
-    offscreenCtx.scale(dpr, dpr);
+    offscreenCtx.scale(bufferDpr, bufferDpr);
     offscreenCtx.globalCompositeOperation = "lighter";
 
     const centerOpacity = Math.max(0, Math.min(1, this.HEATMAP_GRADIENT_CENTER_OPACITY));
@@ -486,7 +492,7 @@ App.seasonMap = {
     blurred.height = physicalHeight;
     const blurredCtx = blurred.getContext("2d");
     if (blurredCtx) {
-      blurredCtx.scale(dpr, dpr);
+      blurredCtx.scale(bufferDpr, bufferDpr);
       blurredCtx.filter = `blur(${blurPx}px)`;
       blurredCtx.drawImage(offscreen, 0, 0, width, height);
       blurredCtx.filter = "none";
