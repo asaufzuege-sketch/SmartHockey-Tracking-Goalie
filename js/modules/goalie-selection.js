@@ -188,6 +188,9 @@ App.playerSelection = {
         App.seasonTable?.exportFromStats?.({
           skipExportConfirm: true,
           clearAfterExport: true,
+          onCancel: () => {
+            this.render();
+          },
           afterExport: () => {
             this.saveCurrentState(index);
             App.showPage?.("selection");
