@@ -1,9 +1,10 @@
 (function () {
   const SVG_W = 430;
-  const SVG_H = 200;
-  const MARGIN = { left: 36, right: 18, top: 16, bottom: 42 };
-  const PLOT_TOP_Y = 20;
-  const PLOT_BASELINE_Y = SVG_H - MARGIN.bottom;
+  const SVG_H = 230;
+  const MARGIN = { left: 28, right: 18, top: 16, bottom: 18 };
+  const TOP_GUIDE_Y = 34;
+  const MIDLINE_Y = 102;
+  const BOTTOM_GUIDE_Y = SVG_H - 18;
   const MAX_DISPLAY = 6;
   const BUCKET_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
   const BUCKET_KEY_RE = /^(?:p|sp)[1-3]_[0-3]$/i;
@@ -17,9 +18,9 @@
     return MARGIN.left + (Math.max(0, Math.min(60, minute)) / 60) * usableW;
   }
 
-  function valueToY(value, maxScale) {
-    const usableH = PLOT_BASELINE_Y - PLOT_TOP_Y;
-    return PLOT_BASELINE_Y - ((Number(value || 0) || 0) / maxScale) * usableH;
+  function valueToYConceded(value, maxScale) {
+    const usableH = BOTTOM_GUIDE_Y - MIDLINE_Y;
+    return MIDLINE_Y + ((Number(value || 0) || 0) / maxScale) * usableH;
   }
 
   function catmullRom2bezier(points) {
@@ -46,7 +47,7 @@
     return String(value || "").trim().toLowerCase();
   }
 
-  function getBucketValue(timeData, key, selectedGoalie, knownGoaliesNormalized) {
+  function getBucketValue(timeData, key, selectedGoalie) {
     const normalizedKey = String(key || "").toLowerCase();
     const legacyKey = normalizedKey.replace(/^p/, "sp");
     const directKey = Object.keys(timeData || {}).find(storedKey => String(storedKey || "").toLowerCase() === normalizedKey);
@@ -54,18 +55,12 @@
     const entry = timeData?.[directKey] ?? timeData?.[directLegacyKey];
     const isGoalieBucket = entry && typeof entry === "object" && !Array.isArray(entry);
     if (isGoalieBucket) {
-      if (selectedGoalie) {
-        const direct = Number(entry[selectedGoalie]);
-        if (Number.isFinite(direct)) return direct;
-        const target = String(selectedGoalie).trim().toLowerCase();
-        const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
-        return Number(entry[alias] || 0);
-      }
-      const keys = Object.keys(entry);
-      const keysToSum = knownGoaliesNormalized.size
-        ? keys.filter(goalie => knownGoaliesNormalized.has(normalizeGoalieName(goalie)))
-        : keys;
-      return keysToSum.reduce((sum, goalie) => sum + Number(entry[goalie] || 0), 0);
+      if (!selectedGoalie) return 0;
+      const direct = Number(entry[selectedGoalie]);
+      if (Number.isFinite(direct)) return direct;
+      const target = String(selectedGoalie).trim().toLowerCase();
+      const alias = Object.keys(entry).find(goalie => String(goalie).trim().toLowerCase() === target);
+      return Number(entry[alias] || 0);
     }
     return Number(entry || 0) || 0;
   }
@@ -74,52 +69,43 @@
     const app = typeof App !== "undefined" ? App : globalThis.App;
     const timeData = app?.seasonMap?.getSeasonTimeData?.() || {};
     const selectedGoalie = app?.seasonMap?.selectedGoalie || "";
-    const knownGoaliesNormalized = new Set((app?.seasonMap?.getAvailableGoalies?.() || []).map(normalizeGoalieName));
     const values = [];
     ["p1", "p2", "p3"].forEach(period => {
       for (let index = 0; index < 4; index += 1) {
-        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie, knownGoaliesNormalized));
+        values.push(getBucketValue(timeData, `${period}_${index}`, selectedGoalie));
       }
     });
     while (values.length < 12) values.push(0);
     const recognizedKeys = Object.keys(timeData || {}).filter(key => BUCKET_KEY_RE.test(String(key || "").trim()));
-    return { values: values.slice(0, 12), timeData, recognizedKeys };
+    const hasAnyBucketData = recognizedKeys.some(key => {
+      const entry = timeData?.[key];
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        return Object.values(entry).some(value => Number(value || 0) > 0);
+      }
+      return Number(entry || 0) > 0;
+    });
+    return { values: values.slice(0, 12), recognizedKeys, hasAnyBucketData, selectedGoalie };
   }
 
   function renderSeasonMomentumGraphic() {
     const container = getContainer();
     if (!container) return;
 
-    const { values, timeData, recognizedKeys } = readValuesFromStorage();
-    const hasStoredData = values.some(value => Number(value || 0) > 0)
-      || recognizedKeys.some(key => {
-        const entry = timeData?.[key];
-        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-          return Object.values(entry).some(value => Number(value || 0) > 0);
-        }
-        return Number(entry || 0) > 0;
-      });
-    if (!hasStoredData) {
+    const { values, hasAnyBucketData, selectedGoalie } = readValuesFromStorage();
+    const hasVisibleValues = values.some(value => Number(value || 0) > 0);
+    if (!String(selectedGoalie || "").trim() || (!hasAnyBucketData && !hasVisibleValues)) {
       container.innerHTML = '<div class="momentum-empty-state">No momentum data yet</div>';
       return;
     }
+
     const maxScale = Math.max(MAX_DISPLAY, ...values, 1);
     const points = values.map((value, index) => ({
       x: minuteToX(BUCKET_MINUTES[index]),
-      y: valueToY(value, maxScale),
+      y: valueToYConceded(value, maxScale),
       value
     }));
-    const positiveRuns = [];
-    let currentRun = [];
-    points.forEach(point => {
-      if (point.value > 0) {
-        currentRun.push(point);
-        return;
-      }
-      if (currentRun.length) positiveRuns.push(currentRun);
-      currentRun = [];
-    });
-    if (currentRun.length) positiveRuns.push(currentRun);
+    const pathD = catmullRom2bezier(points.map(point => ({ x: point.x, y: point.y })));
+    const closedAreaD = `${pathD} L ${points[points.length - 1].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} L ${points[0].x.toFixed(2)} ${MIDLINE_Y.toFixed(2)} Z`;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -127,7 +113,7 @@
     svg.setAttribute("viewBox", `0 0 ${SVG_W} ${SVG_H}`);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Season map momentum chart showing red period totals over game time");
+    svg.setAttribute("aria-label", "Season map momentum chart showing conceded goals over game time");
 
     const line = (x1, y1, x2, y2, stroke, width) => {
       const el = document.createElementNS(svgNS, "line");
@@ -137,6 +123,7 @@
       el.setAttribute("y2", y2);
       el.setAttribute("stroke", stroke);
       el.setAttribute("stroke-width", width);
+      el.setAttribute("stroke-linecap", "round");
       svg.appendChild(el);
     };
 
@@ -152,19 +139,27 @@
       svg.appendChild(el);
     };
 
-    line(minuteToX(0), PLOT_TOP_Y, minuteToX(60), PLOT_TOP_Y, "#ffffff", "2");
-    line(minuteToX(0), PLOT_BASELINE_Y, minuteToX(60), PLOT_BASELINE_Y, "#d6d6d6", "2");
+    line(minuteToX(0), TOP_GUIDE_Y, minuteToX(60), TOP_GUIDE_Y, "#ffffff", "3");
+    line(minuteToX(0), MIDLINE_Y, minuteToX(60), MIDLINE_Y, "#7a7a7a", "3");
+    line(minuteToX(0), BOTTOM_GUIDE_Y, minuteToX(60), BOTTOM_GUIDE_Y, "#d6d6d6", "2");
 
     const majorSet = new Set([0, 20, 40, 60]);
     for (let minute = 0; minute <= 60; minute += 5) {
       const x = minuteToX(minute);
       const isMajor = majorSet.has(minute);
-      line(x, PLOT_BASELINE_Y - (isMajor ? 10 : 6), x, PLOT_BASELINE_Y + (isMajor ? 10 : 6), "#cccccc", isMajor ? "1.6" : "1");
-      text(x, PLOT_BASELINE_Y + (isMajor ? 18 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
+      line(x, TOP_GUIDE_Y - (isMajor ? 18 : 8), x, TOP_GUIDE_Y + (isMajor ? 18 : 8), "#cccccc", isMajor ? "1.6" : "1");
+      text(x, TOP_GUIDE_Y + (isMajor ? 22 : 14), String(minute), isMajor ? "13" : "11", "#ffffff", isMajor ? "800" : "700");
     }
 
-    positiveRuns.forEach(run => {
-      const pathD = catmullRom2bezier(run.map(point => ({ x: point.x, y: point.y })));
+    if (values.some(value => Number(value || 0) > 0)) {
+      const area = document.createElementNS(svgNS, "path");
+      area.setAttribute("d", closedAreaD);
+      area.setAttribute("fill", "#f07d7d");
+      area.setAttribute("stroke", "#7a7a7a");
+      area.setAttribute("stroke-width", "0.9");
+      area.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(area);
+
       const outline = document.createElementNS(svgNS, "path");
       outline.setAttribute("d", pathD);
       outline.setAttribute("fill", "none");
@@ -173,7 +168,7 @@
       outline.setAttribute("stroke-linejoin", "round");
       outline.setAttribute("stroke-linecap", "round");
       svg.appendChild(outline);
-    });
+    }
 
     points.forEach(point => {
       if (point.value <= 0) return;

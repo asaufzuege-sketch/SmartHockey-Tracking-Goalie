@@ -5,6 +5,7 @@ App.seasonMap = {
   resizeTimeout: null,
   viewportSyncListener: null,
   pendingHeatmapImage: null,
+  pendingGoalAreaImage: null,
   HEATMAP_RENDER_DELAY: 150,
   HEATMAP_VIEWPORT_SYNC_DELAY: 100,
   HEATMAP_RADIUS_FACTOR: 0.12,
@@ -28,6 +29,13 @@ App.seasonMap = {
   HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
   HEATMAP_MAX_DPR: 3,
   HEATMAP_BUFFER_MAX_DPR: 2,
+  GOAL_ZONE_LABELS: [
+    { key: "tl", anchorX: 25, anchorY: 22 },
+    { key: "tr", anchorX: 75, anchorY: 22 },
+    { key: "bl", anchorX: 16, anchorY: 75 },
+    { key: "bm", anchorX: 50, anchorY: 75 },
+    { key: "br", anchorX: 84, anchorY: 75 }
+  ],
 
   init() {
     this.loadPersistedFilters();
@@ -230,6 +238,7 @@ App.seasonMap = {
     this.updateGoalieButton();
     this.renderFieldHeader();
     this.renderMarkers();
+    this.renderGoalAreaStats();
     this.scheduleHeatmapRender();
     this.renderTimeTracking();
     this.persistFilters();
@@ -251,7 +260,9 @@ App.seasonMap = {
       clearTimeout(this.resizeTimeout);
       this.resizeTimeout = setTimeout(() => {
         App.markerHandler?.repositionMarkers?.();
+        this.renderGoalAreaStats();
         this.scheduleHeatmapRender();
+        this.renderMomentumGraphic?.();
       }, this.HEATMAP_VIEWPORT_SYNC_DELAY);
     };
 
@@ -579,7 +590,7 @@ App.seasonMap = {
           marker.player || null
         );
         dot.dataset.period = marker.period || "p1";
-        dot.dataset.markerType = marker.markerType || "save";
+        dot.dataset.markerType = marker.markerType || "";
       });
     });
   },
@@ -588,6 +599,80 @@ App.seasonMap = {
     const fieldBox = document.getElementById("seasonFieldBox");
     if (!fieldBox) return;
     fieldBox.querySelector(".field-header")?.remove();
+  },
+
+  getGoalAreaZoneKey(xPctImage, yPctImage) {
+    if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return null;
+    if (yPctImage < 50) {
+      return xPctImage < 50 ? "tl" : "tr";
+    }
+    if (xPctImage < 33.3333) return "bl";
+    if (xPctImage < 66.6667) return "bm";
+    return "br";
+  },
+
+  renderGoalAreaStats() {
+    const goalBox = document.getElementById("seasonGoalRedBox");
+    goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
+    if (!goalBox) return;
+
+    const selectedGoalie = String(this.selectedGoalie || "").trim().toLowerCase();
+    if (!selectedGoalie) return;
+
+    const goalImg = goalBox.querySelector("img");
+    if (!goalImg) return;
+    if (!goalImg.complete || !goalImg.naturalWidth || !goalImg.naturalHeight) {
+      if (this.pendingGoalAreaImage !== goalImg) {
+        this.pendingGoalAreaImage = goalImg;
+        goalImg.addEventListener("load", () => {
+          if (this.pendingGoalAreaImage === goalImg) {
+            this.pendingGoalAreaImage = null;
+          }
+          this.renderGoalAreaStats();
+        }, { once: true });
+      }
+      return;
+    }
+    this.pendingGoalAreaImage = null;
+
+    const zoneCounts = { tl: 0, tr: 0, bl: 0, bm: 0, br: 0 };
+
+    goalBox.querySelectorAll(".marker-dot").forEach(marker => {
+      if (marker.style.display === "none") return;
+      if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return;
+
+      const isGoal = (marker.dataset.markerType || "").toLowerCase() === "goal";
+      if (!isGoal) return;
+
+      const xPctImage = parseFloat(marker.dataset.xPctImage);
+      const yPctImage = parseFloat(marker.dataset.yPctImage);
+      if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
+
+      const zoneKey = this.getGoalAreaZoneKey(xPctImage, yPctImage);
+      if (zoneKey) zoneCounts[zoneKey] += 1;
+    });
+
+    const totalGoals = Object.values(zoneCounts).reduce((sum, count) => sum + count, 0);
+    if (totalGoals === 0) return;
+
+    this.GOAL_ZONE_LABELS.forEach(zone => {
+      const count = zoneCounts[zone.key] || 0;
+      const percent = totalGoals ? Math.round((count / totalGoals) * 100) : 0;
+      const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
+        goalBox,
+        goalImg,
+        zone.anchorX,
+        zone.anchorY
+      );
+      if (!position?.valid) return;
+      const label = document.createElement("div");
+      label.className = "goal-area-label";
+      label.setAttribute("aria-hidden", "true");
+      label.style.left = `${position.xPct}%`;
+      label.style.top = `${position.yPct}%`;
+      label.textContent = `${count} · ${percent}%`;
+      goalBox.appendChild(label);
+    });
   },
 
   renderTimeTracking() {
