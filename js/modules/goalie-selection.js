@@ -182,7 +182,7 @@ App.playerSelection = {
     if (isSwitchingGoalie && App.goalMap?.hasUnsavedGameData?.()) {
       this.render();
       const shouldExport = confirm(
-        "Export or discard current game data?\n\nOK = Export before switching\nCancel = Discard current game data"
+        "Export or discard current game data?\n\nOK = Export before switching\nCancel = Choose discard or keep the current goalie"
       );
       if (shouldExport) {
         App.seasonTable?.exportFromStats?.({
