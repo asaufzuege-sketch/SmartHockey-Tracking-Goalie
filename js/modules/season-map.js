@@ -1,6 +1,6 @@
 App.seasonMap = {
   selectedGoalie: "",
-  comparisonGoalie: "",
+  comparisonGoalies: [],
   heatmapRenderTimeout: null,
   resizeTimeout: null,
   viewportSyncListener: null,
@@ -43,7 +43,6 @@ App.seasonMap = {
   init() {
     this.loadPersistedFilters();
     this.bindViewportSync();
-    this.bindCompareFilter();
   },
 
   getFilterStorageKey() {
@@ -53,13 +52,21 @@ App.seasonMap = {
   loadPersistedFilters() {
     const saved = App.helpers.safeJSONParse(this.getFilterStorageKey(), {}) || {};
     this.selectedGoalie = String(saved.selectedGoalie || "");
-    this.comparisonGoalie = String(saved.comparisonGoalie || "");
+    if (Array.isArray(saved.comparisonGoalies)) {
+      this.comparisonGoalies = saved.comparisonGoalies
+        .map(name => this.resolveGoalieName(name))
+        .map(name => String(name || "").trim())
+        .filter(Boolean);
+    } else {
+      const legacy = String(saved.comparisonGoalie || "").trim();
+      this.comparisonGoalies = legacy ? [this.resolveGoalieName(legacy)] : [];
+    }
   },
 
   persistFilters() {
     AppStorage.setItem(this.getFilterStorageKey(), JSON.stringify({
       selectedGoalie: this.selectedGoalie || "",
-      comparisonGoalie: this.comparisonGoalie || ""
+      comparisonGoalies: this.comparisonGoalies.slice()
     }));
   },
 
@@ -77,9 +84,19 @@ App.seasonMap = {
 
   syncSelectedGoalieToActive() {
     this.selectedGoalie = this.getActiveGoalieName();
-    if (this.selectedGoalie && this.selectedGoalie === this.comparisonGoalie) {
-      this.comparisonGoalie = "";
-    }
+    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
+    const seen = new Set();
+    this.comparisonGoalies = (this.comparisonGoalies || [])
+      .map(name => this.resolveGoalieName(name))
+      .map(name => String(name || "").trim())
+      .filter(Boolean)
+      .filter(name => String(name).trim().toLowerCase() !== selectedNormalized)
+      .filter(name => {
+        const key = String(name || "").trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   },
 
   updateGoalieButton() {
@@ -186,80 +203,62 @@ App.seasonMap = {
   },
 
   getComparableGoalies() {
-    const seasonNames = new Map(
-      Object.keys(App.data.goalieSeasonData || {}).map(name => [String(name || "").trim().toLowerCase(), name])
-    );
+    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
+    const compared = new Set((this.comparisonGoalies || []).map(name => String(name || "").trim().toLowerCase()));
+    const seen = new Set();
     return this.getRosterGoalies()
-      .map(name => seasonNames.get(String(name || "").trim().toLowerCase()) || "")
-      .filter(goalie => goalie && goalie !== this.selectedGoalie)
-      .filter((goalie, index, array) => array.indexOf(goalie) === index)
+      .map(name => this.resolveGoalieName(name))
+      .map(name => String(name || "").trim())
+      .filter(Boolean)
+      .filter(name => {
+        const key = String(name).toLowerCase();
+        if (key === selectedNormalized || compared.has(key) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .sort((a, b) => a.localeCompare(b));
-  },
-
-  populateGoalieFilter() {
-    const select = document.getElementById("seasonMapGoalieFilter");
-    if (!select) return;
-    const savedValue = this.resolveGoalieName(this.selectedGoalie);
-    const goalies = this.getAvailableGoalies();
-    select.innerHTML = '<option value="">All Goalies</option>';
-    if (goalies.length === 0) {
-      this.selectedGoalie = "";
-      return;
-    }
-    goalies.forEach(goalie => {
-      const option = document.createElement("option");
-      option.value = goalie;
-      option.textContent = goalie;
-      select.appendChild(option);
-    });
-    select.value = goalies.includes(savedValue) ? savedValue : "";
-    this.selectedGoalie = select.value || "";
-  },
-
-  populateCompareFilter() {
-    const select = document.getElementById("seasonMapCompareGoalie");
-    if (!select) return;
-    const previousComparison = this.comparisonGoalie || "";
-    select.innerHTML = '<option value="">+ Compare goalie</option>';
-
-    if (!this.selectedGoalie) {
-      select.disabled = true;
-      this.comparisonGoalie = "";
-      if (previousComparison) this.persistFilters();
-      return;
-    }
-
-    const savedValue = this.resolveGoalieName(this.comparisonGoalie);
-    let goalies = this.getComparableGoalies();
-    if (goalies.length === 0) {
-      goalies = this.getAvailableGoalies().filter(goalie => goalie !== this.selectedGoalie);
-    }
-    goalies.forEach(goalie => {
-      const option = document.createElement("option");
-      option.value = goalie;
-      option.textContent = goalie;
-      select.appendChild(option);
-    });
-
-    const canCompare = Boolean(this.selectedGoalie) && goalies.length > 0;
-    select.disabled = !canCompare;
-    const nextComparison = canCompare && goalies.includes(savedValue) ? savedValue : "";
-    select.value = nextComparison;
-    this.comparisonGoalie = select.value || "";
-    if (this.comparisonGoalie !== previousComparison) this.persistFilters();
   },
 
   renderSeasonTable() {
     if (!App.seasonTable) return;
     App.seasonTable.externalGoalieFilter = this.selectedGoalie || "";
-    App.seasonTable.externalComparisonGoalie = this.comparisonGoalie || "";
+    App.seasonTable.externalComparisonGoalies = (this.comparisonGoalies || []).slice();
     App.seasonTable.render();
+  },
+
+  addComparisonGoalie(name) {
+    const resolved = this.resolveGoalieName(name);
+    if (!resolved) return;
+    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
+    const key = String(resolved || "").trim().toLowerCase();
+    if (!key || key === selectedNormalized) return;
+    if ((this.comparisonGoalies || []).some(existing => String(existing || "").trim().toLowerCase() === key)) return;
+
+    this.comparisonGoalies = [...(this.comparisonGoalies || []), resolved];
+    if (App.seasonTable) {
+      App.seasonTable.goalieSortState.key = null;
+      App.seasonTable.goalieSortState.asc = true;
+    }
+    this.persistFilters();
+    this.render();
+  },
+
+  removeComparisonGoalie(name) {
+    const key = String(name || "").trim().toLowerCase();
+    const next = (this.comparisonGoalies || []).filter(existing => String(existing || "").trim().toLowerCase() !== key);
+    if (next.length === (this.comparisonGoalies || []).length) return;
+    this.comparisonGoalies = next;
+    if (App.seasonTable) {
+      App.seasonTable.goalieSortState.key = null;
+      App.seasonTable.goalieSortState.asc = true;
+    }
+    this.persistFilters();
+    this.render();
   },
 
   render(options = {}) {
     this.syncSelectedGoalieToActive();
     this.updateGoalieButton();
-    this.populateCompareFilter();
     this.renderFieldHeader();
     this.renderMarkers();
     this.renderGoalAreaStats();
@@ -288,24 +287,6 @@ App.seasonMap = {
 
     window.addEventListener("resize", this.viewportSyncListener);
     window.addEventListener("orientationchange", this.viewportSyncListener);
-  },
-
-  bindCompareFilter() {
-    const select = document.getElementById("seasonMapCompareGoalie");
-    if (!select || select.dataset.bound === "true") return;
-
-    select.addEventListener("change", () => {
-      if (App.seasonTable) {
-        App.seasonTable.goalieSortState.key = null;
-        App.seasonTable.goalieSortState.asc = true;
-      }
-      this.comparisonGoalie = this.resolveGoalieName(select.value || "");
-      this.persistFilters();
-      this.render({ skipSeasonTable: true });
-      this.renderSeasonTable();
-    });
-
-    select.dataset.bound = "true";
   },
 
   scheduleHeatmapRender(delay = this.HEATMAP_RENDER_DELAY) {
