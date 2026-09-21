@@ -676,6 +676,35 @@ App.seasonMap = {
     return "br";
   },
 
+  computeGoalZoneStats(goalieName) {
+    const selectedGoalie = String(goalieName || "").trim().toLowerCase();
+    const zoneStats = {
+      tl: { goals: 0, saves: 0 },
+      tr: { goals: 0, saves: 0 },
+      bl: { goals: 0, saves: 0 },
+      bm: { goals: 0, saves: 0 },
+      br: { goals: 0, saves: 0 }
+    };
+
+    let totalGoalMarkers = 0;
+    const goalMarkers = this.getSeasonMarkers()?.[1] || [];
+    goalMarkers.forEach((marker) => {
+      if (selectedGoalie && String(marker?.player || "").trim().toLowerCase() !== selectedGoalie) return;
+      const markerType = this.resolveMarkerType(marker?.markerType, marker?.color);
+      const xPctImage = Number(marker?.xPct);
+      const yPctImage = Number(marker?.yPct);
+      if (markerType === "goal") totalGoalMarkers += 1;
+      if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
+      const zoneKey = this.getGoalAreaZoneKey(xPctImage, yPctImage);
+      if (!zoneKey || !zoneStats[zoneKey]) return;
+      if (markerType === "goal") zoneStats[zoneKey].goals += 1;
+      if (markerType === "save") zoneStats[zoneKey].saves += 1;
+    });
+
+    const totalGoals = Object.values(zoneStats).reduce((sum, stats) => sum + stats.goals, 0);
+    return { zoneStats, totalGoals, totalGoalMarkers };
+  },
+
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
@@ -700,35 +729,7 @@ App.seasonMap = {
     }
     this.pendingGoalAreaImage = null;
 
-    const zoneStats = {
-      tl: { goals: 0, saves: 0 },
-      tr: { goals: 0, saves: 0 },
-      bl: { goals: 0, saves: 0 },
-      bm: { goals: 0, saves: 0 },
-      br: { goals: 0, saves: 0 }
-    };
-
-    goalBox.querySelectorAll(".marker-dot").forEach(marker => {
-      if (marker.style.display === "none") return;
-      if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return;
-
-      const markerType = this.resolveMarkerType(marker.dataset.markerType, marker.style.backgroundColor);
-      const xPctImage = parseFloat(marker.dataset.xPctImage);
-      const yPctImage = parseFloat(marker.dataset.yPctImage);
-      if (!Number.isFinite(xPctImage) || !Number.isFinite(yPctImage)) return;
-
-      const zoneKey = this.getGoalAreaZoneKey(xPctImage, yPctImage);
-      if (!zoneKey || !zoneStats[zoneKey]) return;
-      if (markerType === "goal") zoneStats[zoneKey].goals += 1;
-      if (markerType === "save") zoneStats[zoneKey].saves += 1;
-    });
-
-    const totalGoals = Object.values(zoneStats).reduce((sum, stats) => sum + stats.goals, 0);
-    const totalGoalMarkers = Array.from(goalBox.querySelectorAll(".marker-dot")).reduce((sum, marker) => {
-      if (marker.style.display === "none") return sum;
-      if (String(marker.dataset.player || "").trim().toLowerCase() !== selectedGoalie) return sum;
-      return this.resolveMarkerType(marker.dataset.markerType, marker.style.backgroundColor) === "goal" ? sum + 1 : sum;
-    }, 0);
+    const { zoneStats, totalGoals, totalGoalMarkers } = this.computeGoalZoneStats(selectedGoalie);
     if (totalGoals !== totalGoalMarkers) {
       console.debug("[SeasonMap] goal-zone-goal-sum-check", {
         selectedGoalie,
@@ -765,6 +766,174 @@ App.seasonMap = {
       goalBox.appendChild(label);
     });
   },
+
+  cloneMarkerImageRelative(dot) {
+    const copy = dot.cloneNode(true);
+    const xPct = parseFloat(dot.dataset.xPctImage);
+    const yPct = parseFloat(dot.dataset.yPctImage);
+    if (Number.isFinite(xPct) && Number.isFinite(yPct)) {
+      copy.style.left = `${xPct}%`;
+      copy.style.top = `${yPct}%`;
+    }
+    return copy;
+  },
+
+  exportAsPDF() {
+    if (typeof html2canvas !== 'function') {
+      alert('Export library html2canvas is not available. Please refresh the page and try again.');
+      return;
+    }
+    if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+      alert('Export library jsPDF is not available. Please refresh the page and try again.');
+      return;
+    }
+
+    const selectedGoalie = this.selectedGoalie || this.getActiveGoalieName() || 'goalie';
+    const comparisonLabel = (this.comparisonGoalies || []).length ? this.comparisonGoalies.join(', ') : 'None';
+    const date = App.helpers.getCurrentDateString();
+
+    this.renderHeatmap();
+    this.renderGoalAreaStats();
+
+    const EXPORT_WIDTH = 1200;
+    const PADDING = 16;
+    const COL_GAP = 20;
+    const INNER_WIDTH = EXPORT_WIDTH - (PADDING * 2);
+    const fieldWidth = Math.round(INNER_WIDTH * 0.62);
+    const goalWidth = INNER_WIDTH - COL_GAP - fieldWidth;
+    const fieldHeight = Math.round(fieldWidth * 0.96);
+    const goalHeight = Math.round(goalWidth * 0.62);
+
+    const fieldBox = document.getElementById('seasonFieldBox');
+    const goalBox = document.getElementById('seasonGoalRedBox');
+    const momentum = document.getElementById('seasonMapMomentumContainer');
+    if (!fieldBox || !goalBox) {
+      alert('Season Map export failed: required elements are missing.');
+      return;
+    }
+
+    const fieldImgSrc = fieldBox.querySelector('img')?.getAttribute('src') || 'Spielfeld Overlay.png';
+    const goalImgSrc = goalBox.querySelector('img')?.getAttribute('src') || 'Tor Rot.png';
+
+    const exportContainer = document.createElement('div');
+    exportContainer.style.cssText = `position:absolute;left:-9999px;top:0;width:${EXPORT_WIDTH}px;background:#ffffff;padding:${PADDING}px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;`;
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:block;width:100%;box-sizing:border-box;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:20px;font-weight:700;color:#000;background:#fff;border-bottom:2px solid #333;line-height:1.35;';
+    header.textContent = `Goalie: ${selectedGoalie} | Compare: ${comparisonLabel} | Date: ${date}`;
+    exportContainer.appendChild(header);
+
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex;flex-direction:row;align-items:flex-start;gap:${COL_GAP}px;width:100%;box-sizing:border-box;margin-bottom:16px;`;
+
+    const fieldColumn = document.createElement('div');
+    fieldColumn.style.cssText = `flex:0 0 ${fieldWidth}px;width:${fieldWidth}px;height:${fieldHeight}px;position:relative;overflow:hidden;border-radius:10px;background:#ffffff;`;
+    const fieldImg = document.createElement('img');
+    fieldImg.src = fieldImgSrc;
+    fieldImg.alt = 'Season field';
+    fieldImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
+    fieldColumn.appendChild(fieldImg);
+
+    const heatmapCanvas = fieldBox.querySelector('.heatmap-canvas');
+    if (heatmapCanvas) {
+      const canvasCopy = document.createElement('canvas');
+      canvasCopy.width = fieldWidth;
+      canvasCopy.height = fieldHeight;
+      canvasCopy.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
+      const ctx = canvasCopy.getContext('2d');
+      if (ctx) ctx.drawImage(heatmapCanvas, 0, 0, fieldWidth, fieldHeight);
+      fieldColumn.appendChild(canvasCopy);
+    }
+
+    fieldBox.querySelectorAll('.marker-dot').forEach((dot) => {
+      fieldColumn.appendChild(this.cloneMarkerImageRelative(dot));
+    });
+
+    const goalColumn = document.createElement('div');
+    goalColumn.style.cssText = `flex:0 0 ${goalWidth}px;width:${goalWidth}px;display:flex;flex-direction:column;box-sizing:border-box;`;
+    const goalExportBox = document.createElement('div');
+    goalExportBox.style.cssText = `width:${goalWidth}px;height:${goalHeight}px;position:relative;overflow:hidden;border-radius:10px;background:#fff;`;
+    const goalImg = document.createElement('img');
+    goalImg.src = goalImgSrc;
+    goalImg.alt = 'Season goal';
+    goalImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
+    goalExportBox.appendChild(goalImg);
+    goalBox.querySelectorAll('.goal-area-label').forEach((label) => {
+      goalExportBox.appendChild(label.cloneNode(true));
+    });
+    goalBox.querySelectorAll('.marker-dot').forEach((dot) => {
+      goalExportBox.appendChild(this.cloneMarkerImageRelative(dot));
+    });
+    goalColumn.appendChild(goalExportBox);
+
+    row.appendChild(fieldColumn);
+    row.appendChild(goalColumn);
+    exportContainer.appendChild(row);
+
+    if (momentum) {
+      const momentumClone = momentum.cloneNode(true);
+      momentumClone.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-top:8px;padding:2px 6px 6px 6px;background:transparent;';
+      const svg = momentumClone.querySelector('svg');
+      if (svg) {
+        svg.style.width = '100%';
+        svg.style.height = 'auto';
+        svg.style.display = 'block';
+      }
+      exportContainer.appendChild(momentumClone);
+    }
+
+    document.body.appendChild(exportContainer);
+
+    const cleanup = () => {
+      if (exportContainer.parentNode) exportContainer.parentNode.removeChild(exportContainer);
+    };
+
+    requestAnimationFrame(() => {
+      const exportHeight = exportContainer.scrollHeight || exportContainer.offsetHeight;
+      html2canvas(exportContainer, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        width: EXPORT_WIDTH,
+        height: exportHeight
+      }).then((canvas) => {
+        cleanup();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 10;
+        const availableWidth = pageWidth - (margin * 2);
+        const availableHeight = pageHeight - (margin * 2);
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const scale = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+        const renderWidth = imgWidth * scale;
+        const renderHeight = imgHeight * scale;
+        const x = (pageWidth - renderWidth) / 2;
+        const y = (pageHeight - renderHeight) / 2;
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight);
+        const filename = `season_map_${date}_${App.helpers.sanitizeFilename(selectedGoalie || 'goalie')}.pdf`;
+        doc.save(filename);
+      }).catch((error) => {
+        cleanup();
+        console.error('Season map PDF export failed:', error);
+        alert('Season map PDF export failed. Please try again.');
+      });
+    });
+  },
+
+  exportAll() {
+    this.exportAsPDF();
+    if (App.seasonTable?.exportSeasonWorkbook) {
+      App.seasonTable.exportSeasonWorkbook();
+      return;
+    }
+    App.seasonTable?.exportCSV?.();
+  },
+
 
   renderTimeTracking() {
     const timeData = this.getSeasonTimeData();

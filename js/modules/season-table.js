@@ -56,7 +56,11 @@ App.seasonTable = {
     });
 
     document.getElementById("exportSeasonMapPageBtn")?.addEventListener("click", () => {
-      this.exportCSV();
+      if (App.seasonMap?.exportAll) {
+        App.seasonMap.exportAll();
+      } else {
+        this.exportCSV();
+      }
     });
 
     document.getElementById("resetSeasonMapBtn")?.addEventListener("click", () => {
@@ -1759,22 +1763,211 @@ setStickyOffsets() {
     options.afterExport?.();
   },
 
+  getExportGoalieNames() {
+    const goalieSeasonData = App.data.goalieSeasonData || {};
+    let names = Object.keys(goalieSeasonData).filter(name =>
+      !this.externalGoalieFilter || name === this.externalGoalieFilter
+    );
+    if (this.externalGoalieFilter) {
+      const comparisonGoalies = Array.isArray(this.externalComparisonGoalies) ? this.externalComparisonGoalies : [];
+      const seen = new Set();
+      names = [this.externalGoalieFilter, ...comparisonGoalies].filter(name => {
+        const key = this.normalizeGoalieName(name);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    return names;
+  },
+
+  formatGoalieMinutes(decimalMinutes) {
+    if (!decimalMinutes) return "0:00";
+    const totalSeconds = Math.round(decimalMinutes * 60);
+    const mm = Math.floor(totalSeconds / 60);
+    const ss = String(totalSeconds % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  },
+
+  buildGoalieSeasonRows(names) {
+    const totals = { games: 0, minutes: 0, ga: 0, sa: 0 };
+    const goalieRows = [];
+    const STAR_MIN = 0.5;
+    const STAR_MAX = 5.0;
+    const INV = STAR_MIN + STAR_MAX;
+    const MVP_W_SV = 1.0;
+    const MVP_FULL_MIN = 150;
+    const MVP_W_GV = 1.5;
+    const MVP_W_MIN = 0.02;
+    const bottom = App.goalValue?.getBottom?.() || [];
+
+    (names || []).forEach(requestedName => {
+      const seasonEntry = this.findGoalieSeasonEntry(requestedName);
+      const gsd = seasonEntry?.data || null;
+      const name = seasonEntry?.key || requestedName;
+      if (!gsd) {
+        goalieRows.push({
+          num: "",
+          name,
+          games: 0,
+          minutes: 0,
+          minutesDisplay: "0:00",
+          ga: 0,
+          sa: 0,
+          sv: 0,
+          svPctDisplay: "–",
+          gaaDisplay: "–",
+          shutouts: 0,
+          goalieGoalValue: "–",
+          mvpPointsRounded: null,
+          mvpPointsDisplay: "–",
+          hasSeasonData: false,
+          mvpRank: "–"
+        });
+        return;
+      }
+
+      const games = Number(gsd.games || 0);
+      const minutes = Number(gsd.minutes || 0);
+      const ga = Number(gsd.goalsAgainst || 0);
+      const sa = Number(gsd.shotsAgainst || 0);
+      const sv = sa - ga;
+      const svPctValue = sa > 0 ? (sv / sa) * 100 : 0;
+      const gaaValue = minutes > 0 ? (ga * 60 / minutes) : null;
+      const shutouts = Number(gsd.shutouts || 0);
+      const goalieGoalValue = (gsd.gvAgainst || []).reduce((sum, goalsAgainst, index) => {
+        const weight = Number(bottom[index] || 0);
+        if (weight <= 0) return sum;
+        return sum + Number(goalsAgainst || 0) * (INV - weight);
+      }, 0);
+      const confidence = Math.min(1, minutes / MVP_FULL_MIN);
+      const gvPerGame = games > 0 ? goalieGoalValue / games : 0;
+      const mvpPointsRounded = Number(Math.max(0,
+        (svPctValue * MVP_W_SV * confidence) - (gvPerGame * MVP_W_GV) + (minutes * MVP_W_MIN)
+      ).toFixed(1));
+
+      totals.games += games;
+      totals.minutes += minutes;
+      totals.ga += ga;
+      totals.sa += sa;
+
+      goalieRows.push({
+        num: gsd.num || "",
+        name,
+        games,
+        minutes,
+        minutesDisplay: this.formatGoalieMinutes(minutes),
+        ga,
+        sa,
+        sv,
+        svPctDisplay: sa > 0 ? `${svPctValue.toFixed(1)}%` : "–",
+        gaaDisplay: gaaValue !== null ? gaaValue.toFixed(2) : "–",
+        shutouts,
+        goalieGoalValue: Number(goalieGoalValue.toFixed(2)),
+        mvpPointsRounded,
+        mvpPointsDisplay: mvpPointsRounded.toFixed(1),
+        hasSeasonData: true,
+        mvpRank: ""
+      });
+    });
+
+    const sortedDescUnique = [...new Set(
+      goalieRows
+        .filter(row => row.hasSeasonData)
+        .map(row => row.mvpPointsRounded)
+        .sort((a, b) => b - a)
+    )];
+
+    const rankFor = (val) => {
+      const i = sortedDescUnique.indexOf(val);
+      return i === -1 ? "" : (i + 1);
+    };
+
+    goalieRows.forEach((row) => {
+      row.mvpRank = row.hasSeasonData ? rankFor(row.mvpPointsRounded) : "–";
+    });
+
+    return { goalieRows, totals };
+  },
+
+  exportSeasonWorkbook() {
+    if (typeof XLSX === 'undefined') {
+      alert('Excel export library unavailable. Falling back to CSV export.');
+      this.exportCSV();
+      return;
+    }
+
+    const names = this.getExportGoalieNames();
+    if (!names.length) {
+      alert('No goalie season data available.');
+      return;
+    }
+
+    const { goalieRows } = this.buildGoalieSeasonRows(names);
+    const date = App.helpers.getCurrentDateString();
+
+    const goaliesSheetData = [
+      ["Nr", "Goalie", "Pos", "GP", "TOI (mm:ss)", "GA", "SA", "SV", "SV%", "GAA", "SO", "GV", "MVP", "MVP Pts"]
+    ];
+    goalieRows.forEach((row) => {
+      goaliesSheetData.push([
+        row.num,
+        row.name,
+        "G",
+        row.games,
+        row.minutesDisplay,
+        row.ga,
+        row.sa,
+        row.sv,
+        row.svPctDisplay,
+        row.gaaDisplay,
+        row.shutouts,
+        row.goalieGoalValue,
+        row.mvpRank,
+        row.mvpPointsDisplay
+      ]);
+    });
+
+    const zones = ["tl", "tr", "bl", "bm", "br"];
+    const zoneSheetData = [["Goalie", "Zone", "Goals", "Saves", "Shots", "Goal-%", "SV%"]];
+    goalieRows.forEach((row) => {
+      const zoneResult = App.seasonMap?.computeGoalZoneStats?.(row.name) || { zoneStats: {}, totalGoals: 0 };
+      const totalGoals = Number(zoneResult.totalGoals || 0);
+      zones.forEach((zone) => {
+        const goals = Number(zoneResult.zoneStats?.[zone]?.goals || 0);
+        const saves = Number(zoneResult.zoneStats?.[zone]?.saves || 0);
+        const shots = goals + saves;
+        const goalPct = totalGoals > 0 ? `${Math.round((goals / totalGoals) * 100)}%` : "0%";
+        const svPct = shots > 0 ? `${Math.round((saves / shots) * 100)}%` : "–";
+        zoneSheetData.push([row.name, zone, goals, saves, shots, goalPct, svPct]);
+      });
+    });
+
+    const buckets = [
+      'p1_0', 'p1_1', 'p1_2', 'p1_3',
+      'p2_0', 'p2_1', 'p2_2', 'p2_3',
+      'p3_0', 'p3_1', 'p3_2', 'p3_3'
+    ];
+    const timeData = App.seasonMap?.getSeasonTimeData?.() || {};
+    const momentumSheetData = [["Goalie", ...buckets]];
+    goalieRows.forEach((row) => {
+      const values = buckets.map((key) => {
+        const goalieCounts = timeData[key] || {};
+        return Number(App.seasonMap?.getGoalieCount?.(goalieCounts, row.name) || 0);
+      });
+      momentumSheetData.push([row.name, ...values]);
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(goaliesSheetData), 'Goalies');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(zoneSheetData), 'Goal Zones');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(momentumSheetData), 'Momentum');
+    XLSX.writeFile(workbook, `goalie_season_${date}.xlsx`);
+  },
+
   exportCSV() {
     try {
-      const goalieSeasonData = App.data.goalieSeasonData || {};
-      let names = Object.keys(goalieSeasonData).filter(name =>
-        !this.externalGoalieFilter || name === this.externalGoalieFilter
-      );
-      if (this.externalGoalieFilter) {
-        const comparisonGoalies = Array.isArray(this.externalComparisonGoalies) ? this.externalComparisonGoalies : [];
-        const seen = new Set();
-        names = [this.externalGoalieFilter, ...comparisonGoalies].filter(name => {
-          const key = this.normalizeGoalieName(name);
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      }
+      const names = this.getExportGoalieNames();
       if (!names.length) {
         alert("No goalie season data available.");
         return;
@@ -1786,104 +1979,7 @@ setStickyOffsets() {
         "MVP","MVP Points"
       ];
       const rows = [header];
-      const totals = { games: 0, minutes: 0, ga: 0, sa: 0 };
-      const goalieRows = [];
-      const STAR_MIN = 0.5;
-      const STAR_MAX = 5.0;
-      const INV = STAR_MIN + STAR_MAX;
-      const MVP_W_SV = 1.0;
-      const MVP_FULL_MIN = 150;
-      const MVP_W_GV = 1.5;
-      const MVP_W_MIN = 0.02;
-      const bottom = App.goalValue?.getBottom?.() || [];
-
-      const formatMinutes = (decimalMinutes) => {
-        if (!decimalMinutes) return "0:00";
-        const totalSeconds = Math.round(decimalMinutes * 60);
-        const mm = Math.floor(totalSeconds / 60);
-        const ss = String(totalSeconds % 60).padStart(2, "0");
-        return `${mm}:${ss}`;
-      };
-
-      names.forEach(requestedName => {
-        const seasonEntry = this.findGoalieSeasonEntry(requestedName);
-        const gsd = seasonEntry?.data || null;
-        const name = seasonEntry?.key || requestedName;
-        if (!gsd) {
-          goalieRows.push({
-            num: "",
-            name,
-            games: 0,
-            minutes: 0,
-            minutesDisplay: "0:00",
-            ga: 0,
-            sa: 0,
-            sv: 0,
-            svPctDisplay: "–",
-            gaaDisplay: "–",
-            shutouts: 0,
-            goalieGoalValue: "–",
-            mvpPointsRounded: null,
-            mvpPointsDisplay: "–",
-            hasSeasonData: false
-          });
-          return;
-        }
-
-        const games = Number(gsd.games || 0);
-        const minutes = Number(gsd.minutes || 0);
-        const ga = Number(gsd.goalsAgainst || 0);
-        const sa = Number(gsd.shotsAgainst || 0);
-        const sv = sa - ga;
-        const svPctValue = sa > 0 ? (sv / sa) * 100 : 0;
-        const gaaValue = minutes > 0 ? (ga * 60 / minutes) : null;
-        const shutouts = Number(gsd.shutouts || 0);
-        const goalieGoalValue = (gsd.gvAgainst || []).reduce((sum, goalsAgainst, index) => {
-          const weight = Number(bottom[index] || 0);
-          if (weight <= 0) return sum;
-          return sum + Number(goalsAgainst || 0) * (INV - weight);
-        }, 0);
-        const confidence = Math.min(1, minutes / MVP_FULL_MIN);
-        const gvPerGame = games > 0 ? goalieGoalValue / games : 0;
-        const mvpPointsRounded = Number(Math.max(0,
-          (svPctValue * MVP_W_SV * confidence) - (gvPerGame * MVP_W_GV) + (minutes * MVP_W_MIN)
-        ).toFixed(1));
-
-        totals.games += games;
-        totals.minutes += minutes;
-        totals.ga += ga;
-        totals.sa += sa;
-
-        goalieRows.push({
-          num: gsd.num || "",
-          name,
-          games,
-          minutes,
-          minutesDisplay: formatMinutes(minutes),
-          ga,
-          sa,
-          sv,
-          svPctDisplay: sa > 0 ? `${svPctValue.toFixed(1)}%` : "–",
-          gaaDisplay: gaaValue !== null ? gaaValue.toFixed(2) : "–",
-          shutouts,
-          goalieGoalValue: Number(goalieGoalValue.toFixed(2)),
-          mvpPointsRounded,
-          mvpPointsDisplay: mvpPointsRounded.toFixed(1),
-          hasSeasonData: true
-        });
-      });
-
-      const sortedDescUnique = [...new Set(
-        goalieRows
-          .filter(row => row.hasSeasonData)
-          .map(row => row.mvpPointsRounded)
-          .sort((a, b) => b - a)
-      )];
-
-      function rankFor(val) {
-        const i = sortedDescUnique.indexOf(val);
-        return i === -1 ? "" : (i + 1);
-      }
+      const { goalieRows, totals } = this.buildGoalieSeasonRows(names);
 
       goalieRows.forEach(row => {
         rows.push([
@@ -1899,7 +1995,7 @@ setStickyOffsets() {
           row.gaaDisplay,
           row.shutouts,
           row.goalieGoalValue,
-          row.hasSeasonData ? rankFor(row.mvpPointsRounded) : "–",
+          row.mvpRank,
           row.mvpPointsDisplay
         ]);
       });
@@ -1912,7 +2008,7 @@ setStickyOffsets() {
         "Total",
         "",
         "",
-        formatMinutes(totals.minutes),
+        this.formatGoalieMinutes(totals.minutes),
         totalGA,
         totalSA,
         totalSV,

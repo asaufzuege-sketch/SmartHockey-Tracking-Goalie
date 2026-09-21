@@ -403,6 +403,183 @@ App.goalMap = {
     alert("Game Center markers exported to Season Map.");
   },
 
+
+  cloneMarkerImageRelative(dot) {
+    const copy = dot.cloneNode(true);
+    const xPct = parseFloat(dot.dataset.xPctImage);
+    const yPct = parseFloat(dot.dataset.yPctImage);
+    if (Number.isFinite(xPct) && Number.isFinite(yPct)) {
+      copy.style.left = `${xPct}%`;
+      copy.style.top = `${yPct}%`;
+    }
+    return copy;
+  },
+
+  exportAsPDF() {
+    if (typeof html2canvas !== 'function') {
+      alert('Export library html2canvas is not available. Please refresh the page and try again.');
+      return;
+    }
+    if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+      alert('Export library jsPDF is not available. Please refresh the page and try again.');
+      return;
+    }
+
+    const goalieName = this.getActiveGoalie()?.name || 'goalie';
+    const date = App.helpers.getCurrentDateString();
+    const EXPORT_WIDTH = 1200;
+    const PADDING = 16;
+    const COL_GAP = 20;
+    const INNER_WIDTH = EXPORT_WIDTH - (PADDING * 2);
+    const fieldWidth = Math.round(INNER_WIDTH * 0.62);
+    const rightWidth = INNER_WIDTH - COL_GAP - fieldWidth;
+    const fieldHeight = Math.round(fieldWidth * 0.96);
+    const goalHeight = Math.round(rightWidth * 0.62);
+
+    const fieldBox = document.getElementById('fieldBox');
+    const goalBox = document.getElementById('goalRedBox');
+    const timeBox = document.getElementById('timeTrackingBox');
+    if (!fieldBox || !goalBox || !timeBox) {
+      alert('Game Center export failed: required elements are missing.');
+      return;
+    }
+
+    const fieldImgSrc = fieldBox.querySelector('img')?.getAttribute('src') || 'Spielfeld Overlay.png';
+    const goalImgSrc = goalBox.querySelector('img')?.getAttribute('src') || 'Tor Rot.png';
+
+    const exportContainer = document.createElement('div');
+    exportContainer.style.cssText = `position:absolute;left:-9999px;top:0;width:${EXPORT_WIDTH}px;background:#ffffff;padding:${PADDING}px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;`;
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display:block;width:100%;box-sizing:border-box;padding:14px 16px;margin-bottom:16px;text-align:center;font-size:20px;font-weight:700;color:#000;background:#fff;border-bottom:2px solid #333;line-height:1.35;';
+    header.textContent = `Goalie: ${goalieName} | Date: ${date}`;
+    exportContainer.appendChild(header);
+
+    const row = document.createElement('div');
+    row.style.cssText = `display:flex;flex-direction:row;align-items:flex-start;gap:${COL_GAP}px;width:100%;box-sizing:border-box;`;
+
+    const fieldColumn = document.createElement('div');
+    fieldColumn.style.cssText = `flex:0 0 ${fieldWidth}px;width:${fieldWidth}px;height:${fieldHeight}px;position:relative;overflow:hidden;border-radius:10px;background:#ffffff;`;
+    const fieldImg = document.createElement('img');
+    fieldImg.src = fieldImgSrc;
+    fieldImg.alt = 'Game field';
+    fieldImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
+    fieldColumn.appendChild(fieldImg);
+    fieldBox.querySelectorAll('.marker-dot').forEach((dot) => {
+      if (dot.style.display === 'none') return;
+      fieldColumn.appendChild(this.cloneMarkerImageRelative(dot));
+    });
+
+    const rightColumn = document.createElement('div');
+    rightColumn.style.cssText = `flex:0 0 ${rightWidth}px;width:${rightWidth}px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;`;
+
+    const goalExportBox = document.createElement('div');
+    goalExportBox.style.cssText = `width:${rightWidth}px;height:${goalHeight}px;position:relative;overflow:hidden;border-radius:10px;background:#fff;`;
+    const goalImg = document.createElement('img');
+    goalImg.src = goalImgSrc;
+    goalImg.alt = 'Game goal';
+    goalImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
+    goalExportBox.appendChild(goalImg);
+    goalBox.querySelectorAll('.marker-dot').forEach((dot) => {
+      if (dot.style.display === 'none') return;
+      goalExportBox.appendChild(this.cloneMarkerImageRelative(dot));
+    });
+
+    const timeClone = timeBox.cloneNode(true);
+    timeClone.style.cssText = 'width:100%;box-sizing:border-box;background:#fff;border:1px solid #d0d0d0;border-radius:10px;padding:8px;';
+
+    rightColumn.appendChild(goalExportBox);
+    rightColumn.appendChild(timeClone);
+
+    row.appendChild(fieldColumn);
+    row.appendChild(rightColumn);
+    exportContainer.appendChild(row);
+
+    document.body.appendChild(exportContainer);
+
+    const cleanup = () => {
+      if (exportContainer.parentNode) exportContainer.parentNode.removeChild(exportContainer);
+    };
+
+    requestAnimationFrame(() => {
+      const exportHeight = exportContainer.scrollHeight || exportContainer.offsetHeight;
+      html2canvas(exportContainer, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        width: EXPORT_WIDTH,
+        height: exportHeight
+      }).then((canvas) => {
+        cleanup();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 10;
+        const availableWidth = pageWidth - (margin * 2);
+        const availableHeight = pageHeight - (margin * 2);
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const scale = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+        const renderWidth = imgWidth * scale;
+        const renderHeight = imgHeight * scale;
+        const x = (pageWidth - renderWidth) / 2;
+        const y = (pageHeight - renderHeight) / 2;
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, renderWidth, renderHeight);
+        doc.save(`game_center_${date}_${App.helpers.sanitizeFilename(goalieName)}.pdf`);
+      }).catch((error) => {
+        cleanup();
+        console.error('Game Center PDF export failed:', error);
+        alert('Game Center PDF export failed. Please try again.');
+      });
+    });
+  },
+
+  exportWorkbook() {
+    if (typeof XLSX === 'undefined') {
+      alert('Excel export library unavailable. Falling back to CSV export.');
+      App.csvHandler?.exportGoalieGameStats?.();
+      return;
+    }
+
+    const date = App.helpers.getCurrentDateString();
+    const rows = App.statsTable?.getRows?.() || [];
+    const gameSheetData = [["Nr", "Goalie", "Shots", "Saves", "Goals", "Save %"]];
+    rows.forEach((row) => {
+      gameSheetData.push([row.num || '', row.name, row.shots, row.saves, row.goals, row.savePct]);
+    });
+
+    const buckets = [
+      'p1_0', 'p1_1', 'p1_2', 'p1_3',
+      'p2_0', 'p2_1', 'p2_2', 'p2_3',
+      'p3_0', 'p3_1', 'p3_2', 'p3_3'
+    ];
+    const activeGoalie = this.getActiveGoalie()?.name || '';
+    const timeData = this.readTimeDataWithPlayers();
+    const bucketRow = buckets.map((key) => {
+      const goalieCounts = timeData[key] || {};
+      const direct = Number(goalieCounts[activeGoalie] || 0);
+      if (direct > 0) return direct;
+      const normalized = String(activeGoalie || '').trim().toLowerCase();
+      const alias = Object.keys(goalieCounts).find((name) => String(name || '').trim().toLowerCase() === normalized);
+      return Number(goalieCounts[alias] || 0);
+    });
+    const timeSheetData = [["Goalie", ...buckets], [activeGoalie || 'Goalie', ...bucketRow]];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(gameSheetData), 'Game');
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(timeSheetData), 'Time buckets');
+    XLSX.writeFile(workbook, `goalie_game_${date}.xlsx`);
+  },
+
+  exportAll() {
+    this.exportAsPDF();
+    this.exportWorkbook();
+  },
+
+
   reset(skipConfirm = false) {
     if (!skipConfirm && !confirm("Reset current Game Center tracking data?")) return;
     const teamId = App.helpers.getCurrentTeamId();

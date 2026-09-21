@@ -23,6 +23,11 @@ const App = {
   },
 
   initTheme() {
+    const storedTheme = AppStorage.getItem('theme');
+    if (storedTheme === 'dark' || storedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', storedTheme);
+      return;
+    }
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       document.documentElement.setAttribute('data-theme', 'dark');
     } else {
