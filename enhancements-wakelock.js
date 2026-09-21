@@ -1,13 +1,15 @@
 // enhancements-wakelock.js
 (function () {
   const BUTTON_CONFIGS = [
-    { id: 'themeToggleBtn', selector: '#statsPage .top-bar', beforeId: 'selectGoaliesBtn' },
-    { id: 'themeToggleBtnSeason', selector: '#seasonMapPage .top-bar', beforeId: 'backToStatsFromSeasonMapBtn' }
+    { id: 'themeToggleBtn', selector: '#statsPage .top-bar', pageSelector: '#statsPage', beforeId: 'selectGoaliesBtn' },
+    { id: 'themeToggleBtnSeason', selector: '#seasonMapPage .top-bar', pageSelector: '#seasonMapPage', beforeId: 'backToStatsFromSeasonMapBtn' }
   ];
   let isMutating = false;
   let hasPendingFrame = false;
   let domContentLoadedRetried = false;
   let releaseMutationGuardFrame = null;
+  let observer = null;
+  let observedTargetSignature = '';
 
   function onThemeToggle(event) {
     event.preventDefault();
@@ -66,9 +68,7 @@
 
     let button = document.getElementById(config.id);
     if (!button) {
-      withMutationGuard(() => {
-        button = createThemeButton(config.id);
-      });
+      button = createThemeButton(config.id);
       return withMutationGuard(() => {
         const target = document.getElementById(config.beforeId);
         if (target && target.parentElement === topBar) {
@@ -98,6 +98,21 @@
     return false;
   }
 
+  function isButtonPlacementCorrect(config) {
+    const topBar = document.querySelector(config.selector);
+    const button = document.getElementById(config.id);
+    if (!topBar || !button || button.parentElement !== topBar) {
+      return false;
+    }
+
+    const target = document.getElementById(config.beforeId);
+    if (target && target.parentElement === topBar) {
+      return button === topBar.firstElementChild && button.nextElementSibling === target;
+    }
+
+    return topBar.firstElementChild === button;
+  }
+
   function ensureAllButtons() {
     let insertedAny = false;
     BUTTON_CONFIGS.forEach((config) => {
@@ -114,6 +129,8 @@
         updateThemeButtonIcon();
       });
     }
+
+    refreshObserverTargets();
   }
 
   function scheduleEnsureAllButtons() {
@@ -126,43 +143,65 @@
     });
   }
 
-  function createObserver() {
-    return new MutationObserver(() => {
-      if (isMutating) return;
-      scheduleEnsureAllButtons();
-    });
+  function getObservationTarget(config) {
+    return document.querySelector(config.selector) || document.querySelector(config.pageSelector);
   }
 
-  function observeTargets() {
-    const observer = createObserver();
-    let observedAny = false;
-    let missingTarget = false;
+  function getObservedTargetSignature(targets) {
+    return targets.map((target, index) => `${BUTTON_CONFIGS[index].id}:${target ? target.tagName + '#' + (target.id || '') + '.' + target.className : 'missing'}`).join('|');
+  }
 
-    BUTTON_CONFIGS.forEach((config) => {
-      const topBar = document.querySelector(config.selector);
-      if (!topBar) {
-        missingTarget = true;
-        return;
-      }
-
-      observer.observe(topBar, { childList: true });
-      observedAny = true;
-    });
-
-    if (missingTarget && !domContentLoadedRetried && document.readyState === 'loading') {
-      domContentLoadedRetried = true;
-      document.addEventListener('DOMContentLoaded', () => {
-        ensureAllButtons();
-        observeTargets();
-      }, { once: true });
+  function refreshObserverTargets() {
+    const targets = BUTTON_CONFIGS.map(getObservationTarget);
+    const signature = getObservedTargetSignature(targets);
+    if (signature === observedTargetSignature) {
+      return;
     }
 
-    return observedAny;
+    if (!observer) {
+      observer = new MutationObserver((records) => {
+        if (isMutating) return;
+
+        const needsRepair = records.some((record) => {
+          const config = BUTTON_CONFIGS.find((entry) =>
+            record.target.matches?.(entry.selector) || record.target.matches?.(entry.pageSelector)
+          );
+
+          if (!config) return false;
+
+          const topBar = document.querySelector(config.selector);
+          if (record.target.matches?.(config.pageSelector)) {
+            return Boolean(topBar);
+          }
+
+          return !isButtonPlacementCorrect(config) || buttonNeedsThemeUpdate(document.getElementById(config.id));
+        });
+
+        if (needsRepair) {
+          scheduleEnsureAllButtons();
+        }
+      });
+    }
+
+    observer.disconnect();
+    observedTargetSignature = signature;
+
+    targets.forEach((target) => {
+      if (!target) {
+        return;
+      }
+      observer.observe(target, { childList: true });
+    });
   }
 
   function init() {
     ensureAllButtons();
-    observeTargets();
+
+    const missingPage = BUTTON_CONFIGS.some((config) => !document.querySelector(config.selector) && !document.querySelector(config.pageSelector));
+    if (missingPage && !domContentLoadedRetried && document.readyState === 'loading') {
+      domContentLoadedRetried = true;
+      document.addEventListener('DOMContentLoaded', scheduleEnsureAllButtons, { once: true });
+    }
   }
 
   if (document.readyState === 'loading') {
