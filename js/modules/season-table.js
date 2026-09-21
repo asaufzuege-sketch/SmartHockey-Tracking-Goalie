@@ -4,7 +4,7 @@
 App.seasonTable = {
   container: null,
   externalGoalieFilter: "",
-  externalComparisonGoalie: "",
+  externalComparisonGoalies: [],
   viewMode: "goalie",
   sortState: { index: null, asc: true },
   goalieSortState: { key: null, asc: true },
@@ -721,6 +721,39 @@ setStickyOffsets() {
 
     this.renderGoalieTable(fixedContainer, tableScrollWrapper, { withSeparator: false });
     this.setupSynchronizedVerticalScroll(wrapper);
+    this.renderGoalieComparisonControl();
+  },
+
+  renderGoalieComparisonControl() {
+    const row = document.createElement("div");
+    row.className = "season-goalie-compare-row";
+
+    const select = document.createElement("select");
+    select.className = "season-goalie-compare-select";
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "+ Compare goalie";
+    select.appendChild(defaultOption);
+
+    const comparableGoalies = App.seasonMap?.getComparableGoalies?.() || [];
+    comparableGoalies.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+
+    const hasActiveGoalie = Boolean(App.seasonMap?.selectedGoalie);
+    select.disabled = !hasActiveGoalie || comparableGoalies.length === 0;
+    select.addEventListener("change", () => {
+      const value = String(select.value || "").trim();
+      select.value = "";
+      if (!value) return;
+      App.seasonMap?.addComparisonGoalie?.(value);
+    });
+
+    row.appendChild(select);
+    this.container.appendChild(row);
   },
 
   // Rendert die Goalie-Saison-Tabelle in dieselben Container wie die Spieler-Tabelle.
@@ -730,15 +763,20 @@ setStickyOffsets() {
     const withSeparator = options.withSeparator !== false;
     const goalieSeasonData = App.data.goalieSeasonData || {};
     const allGoalieNames = Object.keys(goalieSeasonData);
+    const comparisonGoalies = Array.isArray(this.externalComparisonGoalies) ? this.externalComparisonGoalies : [];
     let goalieNames = allGoalieNames.filter(name =>
       !this.externalGoalieFilter || name === this.externalGoalieFilter
     );
     if (this.externalGoalieFilter) {
+      const selectedNormalized = String(this.externalGoalieFilter || "").trim().toLowerCase();
+      const seen = new Set([selectedNormalized]);
       goalieNames = [this.externalGoalieFilter];
-      if (this.externalComparisonGoalie && this.externalComparisonGoalie !== this.externalGoalieFilter) {
-        goalieNames.push(this.externalComparisonGoalie);
-      }
-      goalieNames = goalieNames.filter(name => allGoalieNames.includes(name));
+      comparisonGoalies.forEach(name => {
+        const key = String(name || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        goalieNames.push(name);
+      });
     }
 
     if (withSeparator) {
@@ -871,8 +909,31 @@ setStickyOffsets() {
 
     const goalieRows = [];
 
-    goalieNames.forEach((name, rowIndex) => {
+    goalieNames.forEach((name) => {
       const gsd = goalieSeasonData[name];
+      const hasSeasonData = Boolean(gsd);
+      if (!hasSeasonData) {
+        goalieRows.push({
+          num: "",
+          name,
+          games: 0,
+          minutes: "0:00",
+          ga: 0,
+          sa: 0,
+          sv: 0,
+          svPct: "–",
+          svPctSort: null,
+          gaa: "–",
+          gaaValue: null,
+          shutouts: 0,
+          goalieGoalValue: "–",
+          mvpPointsRounded: null,
+          mvpPointsDisplay: "–",
+          hasSeasonData,
+          isComparison: Boolean(this.externalGoalieFilter && name !== this.externalGoalieFilter)
+        });
+        return;
+      }
       const games = Number(gsd.games || 0);
       const minutesDec = Number(gsd.minutes || 0);
       const ga = Number(gsd.goalsAgainst || 0);
@@ -893,9 +954,7 @@ setStickyOffsets() {
       mvpPoints = Math.max(0, mvpPoints);
       const mvpPointsRounded = Number(mvpPoints.toFixed(1));
 
-      const rowClass = (rowIndex % 2 === 0) ? "even-row" : "odd-row";
       goalieRows.push({
-        rowClass,
         num: gsd.num || "",
         name,
         games,
@@ -909,16 +968,22 @@ setStickyOffsets() {
         gaaValue,
         shutouts,
         goalieGoalValue,
-        mvpPointsRounded
+        mvpPointsRounded,
+        mvpPointsDisplay: mvpPointsRounded.toFixed(1),
+        hasSeasonData,
+        isComparison: Boolean(this.externalGoalieFilter && name !== this.externalGoalieFilter)
       });
     });
 
-    const sortedByMvp = goalieRows.slice().sort((a, b) => (b.mvpPointsRounded || 0) - (a.mvpPointsRounded || 0));
+    const sortedByMvp = goalieRows
+      .filter(row => row.hasSeasonData)
+      .slice()
+      .sort((a, b) => (b.mvpPointsRounded || 0) - (a.mvpPointsRounded || 0));
     const uniqueScores = [...new Set(sortedByMvp.map(r => r.mvpPointsRounded))];
     const scoreToRank = {};
     uniqueScores.forEach((s, idx) => { scoreToRank[s] = idx + 1; });
     goalieRows.forEach(row => {
-      row.mvpRank = scoreToRank[row.mvpPointsRounded] || "";
+      row.mvpRank = row.hasSeasonData ? (scoreToRank[row.mvpPointsRounded] || "") : "–";
     });
 
     const normalizeGoalieSortValue = (val) => {
@@ -929,7 +994,10 @@ setStickyOffsets() {
 
     let displayGoalieRows = goalieRows.slice();
     if (this.externalGoalieFilter && !this.goalieSortState.key) {
-      const ordered = [this.externalGoalieFilter, this.externalComparisonGoalie].filter(Boolean);
+      const ordered = [
+        this.externalGoalieFilter,
+        ...comparisonGoalies
+      ].filter(Boolean);
       const orderedNormalized = ordered.map(name => String(name || "").trim().toLowerCase());
       const getOrderIndex = (name) => orderedNormalized.indexOf(String(name || "").trim().toLowerCase());
       displayGoalieRows.sort((a, b) => {
@@ -964,7 +1032,7 @@ setStickyOffsets() {
       row.shutouts,                        // 7: SO
       row.goalieGoalValue,                 // 8: Goal Value
       row.mvpRank,                         // 9: MVP
-      row.mvpPointsRounded.toFixed(1)      // 10: MVP Points
+      row.mvpPointsDisplay                 // 10: MVP Points
     ];
 
     displayGoalieRows.forEach((row, rowIndex) => {
@@ -972,13 +1040,32 @@ setStickyOffsets() {
       // Fixed: Nr + Name + Pos.
       const gFixedTr = document.createElement("tr");
       gFixedTr.className = rowClass;
-      [row.num, row.name, "G"].forEach((txt, i) => {
-        const td = document.createElement("td");
-        td.textContent = txt;
-        if (i === 1) { td.style.textAlign = "left"; td.style.fontWeight = "700"; }
-        if (i === 2) td.classList.add("pos-cell");
-        gFixedTr.appendChild(td);
-      });
+      const numberTd = document.createElement("td");
+      numberTd.textContent = row.num;
+      gFixedTr.appendChild(numberTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.style.textAlign = "left";
+      nameTd.style.fontWeight = "700";
+      nameTd.textContent = row.name;
+      if (row.isComparison) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "season-goalie-compare-remove";
+        removeBtn.textContent = "×";
+        removeBtn.setAttribute("aria-label", `Remove comparison goalie ${row.name}`);
+        removeBtn.addEventListener("click", () => {
+          App.seasonMap?.removeComparisonGoalie?.(row.name);
+        });
+        nameTd.appendChild(document.createTextNode(" "));
+        nameTd.appendChild(removeBtn);
+      }
+      gFixedTr.appendChild(nameTd);
+
+      const posTd = document.createElement("td");
+      posTd.textContent = "G";
+      posTd.classList.add("pos-cell");
+      gFixedTr.appendChild(posTd);
       gFixedTbody.appendChild(gFixedTr);
 
       // Scroll: Games, MIN, GA, SA, SV, Sv%, GAA, SO, Goal Value, MVP, MVP Points
@@ -1645,9 +1732,19 @@ setStickyOffsets() {
   exportCSV() {
     try {
       const goalieSeasonData = App.data.goalieSeasonData || {};
-      const names = Object.keys(goalieSeasonData).filter(name =>
+      let names = Object.keys(goalieSeasonData).filter(name =>
         !this.externalGoalieFilter || name === this.externalGoalieFilter
       );
+      if (this.externalGoalieFilter) {
+        const comparisonGoalies = Array.isArray(this.externalComparisonGoalies) ? this.externalComparisonGoalies : [];
+        const seen = new Set();
+        names = [this.externalGoalieFilter, ...comparisonGoalies].filter(name => {
+          const key = String(name || "").trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
       if (!names.length) {
         alert("No goalie season data available.");
         return;
@@ -1679,7 +1776,28 @@ setStickyOffsets() {
       };
 
       names.forEach(name => {
-        const gsd = goalieSeasonData[name] || {};
+        const gsd = goalieSeasonData[name];
+        if (!gsd) {
+          goalieRows.push({
+            num: "",
+            name,
+            games: 0,
+            minutes: 0,
+            minutesDisplay: "0:00",
+            ga: 0,
+            sa: 0,
+            sv: 0,
+            svPctDisplay: "–",
+            gaaDisplay: "–",
+            shutouts: 0,
+            goalieGoalValue: "–",
+            mvpPointsRounded: null,
+            mvpPointsDisplay: "–",
+            hasSeasonData: false
+          });
+          return;
+        }
+
         const games = Number(gsd.games || 0);
         const minutes = Number(gsd.minutes || 0);
         const ga = Number(gsd.goalsAgainst || 0);
@@ -1717,11 +1835,18 @@ setStickyOffsets() {
           gaaDisplay: gaaValue !== null ? gaaValue.toFixed(2) : "–",
           shutouts,
           goalieGoalValue: Number(goalieGoalValue.toFixed(2)),
-          mvpPointsRounded
+          mvpPointsRounded,
+          mvpPointsDisplay: mvpPointsRounded.toFixed(1),
+          hasSeasonData: true
         });
       });
 
-      const sortedDescUnique = [...new Set(goalieRows.map(row => row.mvpPointsRounded).sort((a, b) => b - a))];
+      const sortedDescUnique = [...new Set(
+        goalieRows
+          .filter(row => row.hasSeasonData)
+          .map(row => row.mvpPointsRounded)
+          .sort((a, b) => b - a)
+      )];
 
       function rankFor(val) {
         const i = sortedDescUnique.indexOf(val);
@@ -1742,8 +1867,8 @@ setStickyOffsets() {
           row.gaaDisplay,
           row.shutouts,
           row.goalieGoalValue,
-          rankFor(row.mvpPointsRounded),
-          row.mvpPointsRounded.toFixed(1)
+          row.hasSeasonData ? rankFor(row.mvpPointsRounded) : "–",
+          row.mvpPointsDisplay
         ]);
       });
 

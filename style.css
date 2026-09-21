@@ -3111,7 +3111,6 @@ tr[data-player].dragging {
   }
   
   #seasonMapPage .top-bar .top-btn,
-  #seasonMapPage .top-bar .player-filter-btn,
   #torbildPage .top-bar .top-btn,
   #torbildPage .top-bar .player-filter-btn {
     flex: 0 1 auto !important;
@@ -4433,10 +4432,18 @@ body.locked {
 }
 
 #seasonMapStatsContainer .season-goalie-compare-remove {
-  width: 36px;
-  height: 36px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   cursor: pointer;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+#seasonMapStatsContainer .goalie-table-fixed .season-goalie-compare-remove {
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 @media (min-width: 900px) {
