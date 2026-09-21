@@ -1,4 +1,4 @@
-const CACHE_VERSION = '3.4.3';
+const CACHE_VERSION = '3.4.4';
 const CACHE_NAME = 'smarthockey-goalie-v' + CACHE_VERSION;
 
 const imageUrlsToCacheIndividually = [
@@ -40,6 +40,8 @@ const urlsToCache = [
   './js/modules/season-map.js?v=' + CACHE_VERSION,
   './js/modules/goal-value.js?v=' + CACHE_VERSION,
   './js/modules/billing.js?v=' + CACHE_VERSION,
+  './js/modules/theme-toggle.js?v=' + CACHE_VERSION,
+  './enhancements-wakelock.js?v=' + CACHE_VERSION,
   './season_table_ui_patch.js?v=' + CACHE_VERSION,
   './season_map_momentum.js?v=' + CACHE_VERSION,
   './manifest.json?v=' + CACHE_VERSION,

@@ -218,7 +218,8 @@ h1 {
 #statsPage #timerBtn { font-variant-numeric: tabular-nums; }
 
 /* Theme Toggle Button - Only on Game Center page */
-#themeToggleBtn {
+#themeToggleBtn,
+#themeToggleBtnSeason {
   background: linear-gradient(to bottom, #d0d0d0, #808080);
   color: #000;
   border: none;
@@ -240,14 +241,42 @@ h1 {
   cursor: not-allowed;
 }
 
-#themeToggleBtn:hover {
+#themeToggleBtn:hover,
+#themeToggleBtnSeason:hover {
   filter: brightness(1.1);
 }
 
 /* Dark Mode Styling for Theme Button */
-[data-theme="dark"] #themeToggleBtn {
+[data-theme="dark"] #themeToggleBtn,
+[data-theme="dark"] #themeToggleBtnSeason {
   background: linear-gradient(to bottom, #4a4a4a, #2a2a2a);
   color: #fff;
+}
+
+
+[data-theme="light"] #statsPage .top-bar,
+[data-theme="light"] #seasonMapPage .top-bar {
+  background: transparent;
+}
+
+[data-theme="light"] #seasonMapStatsContainer .season-goalie-compare-select,
+[data-theme="light"] #seasonMapStatsContainer .season-goalie-compare-remove {
+  background: #f2f4fa;
+  color: #1d2633;
+  border-color: rgba(95, 15, 255, 0.25);
+}
+
+[data-theme="light"] #seasonMapPage .goal-area-label {
+  background: rgba(255, 255, 255, 0.88);
+  color: #1b1b1b;
+  text-shadow: none;
+  border: 1px solid rgba(95, 15, 255, 0.25);
+}
+
+[data-theme="light"] #seasonMapPage .season-momentum-box,
+[data-theme="light"] #seasonMapMomentumContainer {
+  background: #ffffff;
+  color: #1b1b1b;
 }
 
 /* Season-Seite Topbar */

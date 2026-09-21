@@ -4,7 +4,11 @@ App.statsTable = {
   init() {
     this.container = document.getElementById("statsContainer");
     document.getElementById("exportBtn")?.addEventListener("click", () => {
-      if (App.csvHandler?.exportGoalieGameStats) App.csvHandler.exportGoalieGameStats();
+      if (App.goalMap?.exportAll) {
+        App.goalMap.exportAll();
+      } else if (App.csvHandler?.exportGoalieGameStats) {
+        App.csvHandler.exportGoalieGameStats();
+      }
     });
     document.getElementById("resetBtn")?.addEventListener("click", () => {
       App.goalMap?.reset?.();
