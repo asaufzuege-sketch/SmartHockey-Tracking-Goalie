@@ -218,8 +218,8 @@
   function init() {
     ensureAllButtons();
 
-    const missingPage = BUTTON_CONFIGS.some((config) => !document.querySelector(config.selector) && !document.querySelector(config.pageSelector));
-    if (missingPage && !domContentLoadedRetried && document.readyState === 'loading') {
+    const missingTarget = BUTTON_CONFIGS.some((config) => !document.querySelector(config.selector) || !document.querySelector(config.pageSelector));
+    if (missingTarget && !domContentLoadedRetried && document.readyState === 'loading') {
       domContentLoadedRetried = true;
       document.addEventListener('DOMContentLoaded', scheduleEnsureAllButtons, { once: true });
     }
