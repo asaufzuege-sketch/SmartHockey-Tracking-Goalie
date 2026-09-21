@@ -10,6 +10,8 @@
   let releaseMutationGuardFrame = null;
   let observer = null;
   let observedTargetSignature = '';
+  const observedNodeIds = new WeakMap();
+  let nextObservedNodeId = 1;
 
   function onThemeToggle(event) {
     event.preventDefault();
@@ -158,8 +160,16 @@
     return targets;
   }
 
+  function getObservedNodeId(target) {
+    if (!observedNodeIds.has(target)) {
+      observedNodeIds.set(target, nextObservedNodeId++);
+    }
+
+    return observedNodeIds.get(target);
+  }
+
   function getObservedTargetSignature(targets) {
-    return targets.map((target) => `${target.tagName}#${target.id || ''}.${target.className}`).join('|');
+    return targets.map((target) => getObservedNodeId(target)).join('|');
   }
 
   function refreshObserverTargets() {
