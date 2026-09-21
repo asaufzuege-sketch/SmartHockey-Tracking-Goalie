@@ -19,6 +19,25 @@ App.seasonTable = {
   // Constants for double-tap detection
   DOUBLE_TAP_DELAY: 300,
 
+  normalizeGoalieName(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  },
+
+  findGoalieSeasonEntry(name) {
+    const normalizedTarget = this.normalizeGoalieName(name);
+    if (!normalizedTarget) return null;
+    const goalieSeasonData = App.data.goalieSeasonData || {};
+    const normalizedToKey = new Map();
+    Object.keys(goalieSeasonData).forEach((key) => {
+      const normalizedKey = this.normalizeGoalieName(key);
+      if (!normalizedKey || normalizedToKey.has(normalizedKey)) return;
+      normalizedToKey.set(normalizedKey, key);
+    });
+    const resolvedKey = normalizedToKey.get(normalizedTarget);
+    if (!resolvedKey) return null;
+    return { key: resolvedKey, data: goalieSeasonData[resolvedKey] };
+  },
+
   init() {
     this.container = document.getElementById("seasonMapStatsContainer");
     
@@ -768,11 +787,11 @@ setStickyOffsets() {
       !this.externalGoalieFilter || name === this.externalGoalieFilter
     );
     if (this.externalGoalieFilter) {
-      const selectedNormalized = String(this.externalGoalieFilter || "").trim().toLowerCase();
+      const selectedNormalized = this.normalizeGoalieName(this.externalGoalieFilter);
       const seen = new Set([selectedNormalized]);
       goalieNames = [this.externalGoalieFilter];
       comparisonGoalies.forEach(name => {
-        const key = String(name || "").trim().toLowerCase();
+        const key = this.normalizeGoalieName(name);
         if (!key || seen.has(key)) return;
         seen.add(key);
         goalieNames.push(name);
@@ -909,9 +928,20 @@ setStickyOffsets() {
 
     const goalieRows = [];
 
-    goalieNames.forEach((name) => {
-      const gsd = goalieSeasonData[name];
+    goalieNames.forEach((requestedName) => {
+      const seasonEntry = this.findGoalieSeasonEntry(requestedName);
+      const resolvedKey = seasonEntry?.key || null;
+      const gsd = seasonEntry?.data || null;
+      const name = resolvedKey || requestedName;
       const hasSeasonData = Boolean(gsd);
+      const isComparison = Boolean(this.externalGoalieFilter)
+        && this.normalizeGoalieName(requestedName) !== this.normalizeGoalieName(this.externalGoalieFilter);
+      if (!hasSeasonData && isComparison) {
+        console.debug("[SeasonTable] comparison-goalie-lookup", {
+          requested: requestedName,
+          resolvedKey
+        });
+      }
       if (!hasSeasonData) {
         goalieRows.push({
           num: "",
@@ -930,7 +960,7 @@ setStickyOffsets() {
           mvpPointsRounded: null,
           mvpPointsDisplay: "–",
           hasSeasonData,
-          isComparison: Boolean(this.externalGoalieFilter && name !== this.externalGoalieFilter)
+          isComparison
         });
         return;
       }
@@ -971,7 +1001,7 @@ setStickyOffsets() {
         mvpPointsRounded,
         mvpPointsDisplay: mvpPointsRounded.toFixed(1),
         hasSeasonData,
-        isComparison: Boolean(this.externalGoalieFilter && name !== this.externalGoalieFilter)
+        isComparison
       });
     });
 
@@ -998,8 +1028,8 @@ setStickyOffsets() {
         this.externalGoalieFilter,
         ...comparisonGoalies
       ].filter(Boolean);
-      const orderedNormalized = ordered.map(name => String(name || "").trim().toLowerCase());
-      const getOrderIndex = (name) => orderedNormalized.indexOf(String(name || "").trim().toLowerCase());
+      const orderedNormalized = ordered.map(name => this.normalizeGoalieName(name));
+      const getOrderIndex = (name) => orderedNormalized.indexOf(this.normalizeGoalieName(name));
       displayGoalieRows.sort((a, b) => {
         const ia = getOrderIndex(a.name);
         const ib = getOrderIndex(b.name);
@@ -1739,7 +1769,7 @@ setStickyOffsets() {
         const comparisonGoalies = Array.isArray(this.externalComparisonGoalies) ? this.externalComparisonGoalies : [];
         const seen = new Set();
         names = [this.externalGoalieFilter, ...comparisonGoalies].filter(name => {
-          const key = String(name || "").trim().toLowerCase();
+          const key = this.normalizeGoalieName(name);
           if (!key || seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -1775,8 +1805,10 @@ setStickyOffsets() {
         return `${mm}:${ss}`;
       };
 
-      names.forEach(name => {
-        const gsd = goalieSeasonData[name];
+      names.forEach(requestedName => {
+        const seasonEntry = this.findGoalieSeasonEntry(requestedName);
+        const gsd = seasonEntry?.data || null;
+        const name = seasonEntry?.key || requestedName;
         if (!gsd) {
           goalieRows.push({
             num: "",

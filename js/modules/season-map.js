@@ -99,27 +99,31 @@ App.seasonMap = {
       .filter(Boolean);
   },
 
+  normalizeGoalieName(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  },
+
   resolveGoalieName(value) {
     const target = String(value || "").trim();
     if (!target) return "";
     const allGoalies = this.getAvailableGoalies();
+    const normalized = this.normalizeGoalieName(target);
     const exact = allGoalies.find(name => name === target);
     if (exact) return exact;
-    const normalized = target.toLowerCase();
-    const alias = allGoalies.find(name => String(name || "").trim().toLowerCase() === normalized);
+    const alias = allGoalies.find(name => this.normalizeGoalieName(name) === normalized);
     return alias || target;
   },
 
   normalizeComparisonGoalies(goalies, excludedGoalie = this.selectedGoalie) {
-    const excludedNormalized = String(excludedGoalie || "").trim().toLowerCase();
+    const excludedNormalized = this.normalizeGoalieName(excludedGoalie);
     const seen = new Set();
     return (Array.isArray(goalies) ? goalies : [])
       .map(name => this.resolveGoalieName(name))
       .map(name => String(name || "").trim())
       .filter(Boolean)
-      .filter(name => String(name).trim().toLowerCase() !== excludedNormalized)
+      .filter(name => this.normalizeGoalieName(name) !== excludedNormalized)
       .filter(name => {
-        const key = String(name || "").trim().toLowerCase();
+        const key = this.normalizeGoalieName(name);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -173,14 +177,15 @@ App.seasonMap = {
 
   getAvailableGoalies() {
     const byNormalized = new Map();
-    const addGoalie = (goalie) => {
+    const addGoalie = (goalie, prefer = false) => {
       const raw = String(goalie || "").trim();
       if (!raw) return;
-      const key = raw.toLowerCase();
-      if (!byNormalized.has(key)) byNormalized.set(key, raw);
+      const key = this.normalizeGoalieName(raw);
+      if (!key) return;
+      if (!byNormalized.has(key) || prefer) byNormalized.set(key, raw);
     };
 
-    Object.keys(App.data.goalieSeasonData || {}).forEach(addGoalie);
+    Object.keys(App.data.goalieSeasonData || {}).forEach(goalie => addGoalie(goalie, true));
     const goalMarkers = this.getSeasonMarkers()[1] || [];
     goalMarkers.forEach(marker => {
       addGoalie(marker.player);
@@ -204,20 +209,21 @@ App.seasonMap = {
   },
 
   getComparableGoalies() {
-    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
-    const compared = new Set((this.comparisonGoalies || []).map(name => String(name || "").trim().toLowerCase()));
-    const seen = new Set();
-    return this.getRosterGoalies()
-      .map(name => this.resolveGoalieName(name))
-      .map(name => String(name || "").trim())
-      .filter(Boolean)
-      .filter(name => {
-        const key = String(name).toLowerCase();
-        if (key === selectedNormalized || compared.has(key) || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .sort((a, b) => a.localeCompare(b));
+    const selectedNormalized = this.normalizeGoalieName(this.selectedGoalie);
+    const compared = new Set((this.comparisonGoalies || []).map(name => this.normalizeGoalieName(name)));
+    const byNormalized = new Map();
+    const addCandidate = (name, prefer = false) => {
+      const raw = String(name || "").trim();
+      if (!raw) return;
+      const key = this.normalizeGoalieName(raw);
+      if (!key || key === selectedNormalized || compared.has(key)) return;
+      if (!byNormalized.has(key) || prefer) byNormalized.set(key, raw);
+    };
+
+    this.getRosterGoalies().forEach(name => addCandidate(name));
+    Object.keys(App.data.goalieSeasonData || {}).forEach(name => addCandidate(name, true));
+
+    return Array.from(byNormalized.values()).sort((a, b) => a.localeCompare(b));
   },
 
   renderSeasonTable() {
@@ -231,10 +237,10 @@ App.seasonMap = {
     const resolved = this.resolveGoalieName(name);
     if (!resolved) return;
     if (!this.selectedGoalie) return;
-    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
-    const key = String(resolved || "").trim().toLowerCase();
+    const selectedNormalized = this.normalizeGoalieName(this.selectedGoalie);
+    const key = this.normalizeGoalieName(resolved);
     if (!key || key === selectedNormalized) return;
-    if ((this.comparisonGoalies || []).some(existing => String(existing || "").trim().toLowerCase() === key)) return;
+    if ((this.comparisonGoalies || []).some(existing => this.normalizeGoalieName(existing) === key)) return;
 
     this.comparisonGoalies = [...(this.comparisonGoalies || []), resolved];
     if (App.seasonTable) {
@@ -246,8 +252,8 @@ App.seasonMap = {
   },
 
   removeComparisonGoalie(name) {
-    const key = String(name || "").trim().toLowerCase();
-    const next = (this.comparisonGoalies || []).filter(existing => String(existing || "").trim().toLowerCase() !== key);
+    const key = this.normalizeGoalieName(name);
+    const next = (this.comparisonGoalies || []).filter(existing => this.normalizeGoalieName(existing) !== key);
     if (next.length === (this.comparisonGoalies || []).length) return;
     this.comparisonGoalies = next;
     if (App.seasonTable) {
