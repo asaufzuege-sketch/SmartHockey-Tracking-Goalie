@@ -143,16 +143,27 @@
     });
   }
 
-  function getObservationTarget(config) {
-    return document.querySelector(config.selector) || document.querySelector(config.pageSelector);
+  function getObservationTargets(config) {
+    const targets = [];
+    const page = document.querySelector(config.pageSelector);
+    const topBar = document.querySelector(config.selector);
+
+    if (page) {
+      targets.push(page);
+    }
+    if (topBar) {
+      targets.push(topBar);
+    }
+
+    return targets;
   }
 
   function getObservedTargetSignature(targets) {
-    return targets.map((target, index) => `${BUTTON_CONFIGS[index].id}:${target ? target.tagName + '#' + (target.id || '') + '.' + target.className : 'missing'}`).join('|');
+    return targets.map((target) => `${target.tagName}#${target.id || ''}.${target.className}`).join('|');
   }
 
   function refreshObserverTargets() {
-    const targets = BUTTON_CONFIGS.map(getObservationTarget);
+    const targets = BUTTON_CONFIGS.flatMap(getObservationTargets);
     const signature = getObservedTargetSignature(targets);
     if (signature === observedTargetSignature) {
       return;
@@ -171,7 +182,7 @@
 
           const topBar = document.querySelector(config.selector);
           if (record.target.matches?.(config.pageSelector)) {
-            return Boolean(topBar);
+            return Boolean(topBar) && (!isButtonPlacementCorrect(config) || buttonNeedsThemeUpdate(document.getElementById(config.id)));
           }
 
           return !isButtonPlacementCorrect(config) || buttonNeedsThemeUpdate(document.getElementById(config.id));
