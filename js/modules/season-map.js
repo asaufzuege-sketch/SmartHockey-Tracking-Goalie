@@ -229,6 +229,7 @@ App.seasonMap = {
   addComparisonGoalie(name) {
     const resolved = this.resolveGoalieName(name);
     if (!resolved) return;
+    if (!this.selectedGoalie) return;
     const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
     const key = String(resolved || "").trim().toLowerCase();
     if (!key || key === selectedNormalized) return;
