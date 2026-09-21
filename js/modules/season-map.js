@@ -53,13 +53,10 @@ App.seasonMap = {
     const saved = App.helpers.safeJSONParse(this.getFilterStorageKey(), {}) || {};
     this.selectedGoalie = String(saved.selectedGoalie || "");
     if (Array.isArray(saved.comparisonGoalies)) {
-      this.comparisonGoalies = saved.comparisonGoalies
-        .map(name => this.resolveGoalieName(name))
-        .map(name => String(name || "").trim())
-        .filter(Boolean);
+      this.comparisonGoalies = this.normalizeComparisonGoalies(saved.comparisonGoalies, this.selectedGoalie);
     } else {
       const legacy = String(saved.comparisonGoalie || "").trim();
-      this.comparisonGoalies = legacy ? [this.resolveGoalieName(legacy)] : [];
+      this.comparisonGoalies = this.normalizeComparisonGoalies(legacy ? [legacy] : [], this.selectedGoalie);
     }
   },
 
@@ -84,19 +81,7 @@ App.seasonMap = {
 
   syncSelectedGoalieToActive() {
     this.selectedGoalie = this.getActiveGoalieName();
-    const selectedNormalized = String(this.selectedGoalie || "").trim().toLowerCase();
-    const seen = new Set();
-    this.comparisonGoalies = (this.comparisonGoalies || [])
-      .map(name => this.resolveGoalieName(name))
-      .map(name => String(name || "").trim())
-      .filter(Boolean)
-      .filter(name => String(name).trim().toLowerCase() !== selectedNormalized)
-      .filter(name => {
-        const key = String(name || "").trim().toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+    this.comparisonGoalies = this.normalizeComparisonGoalies(this.comparisonGoalies || [], this.selectedGoalie);
   },
 
   updateGoalieButton() {
@@ -123,6 +108,22 @@ App.seasonMap = {
     const normalized = target.toLowerCase();
     const alias = allGoalies.find(name => String(name || "").trim().toLowerCase() === normalized);
     return alias || target;
+  },
+
+  normalizeComparisonGoalies(goalies, excludedGoalie = this.selectedGoalie) {
+    const excludedNormalized = String(excludedGoalie || "").trim().toLowerCase();
+    const seen = new Set();
+    return (Array.isArray(goalies) ? goalies : [])
+      .map(name => this.resolveGoalieName(name))
+      .map(name => String(name || "").trim())
+      .filter(Boolean)
+      .filter(name => String(name).trim().toLowerCase() !== excludedNormalized)
+      .filter(name => {
+        const key = String(name || "").trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   },
 
   getGoalieCount(goalieCounts, goalieName) {
