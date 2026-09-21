@@ -4,6 +4,10 @@
     { id: 'themeToggleBtn', selector: '#statsPage .top-bar', beforeId: 'selectGoaliesBtn' },
     { id: 'themeToggleBtnSeason', selector: '#seasonMapPage .top-bar', beforeId: 'backToStatsFromSeasonMapBtn' }
   ];
+  let isMutating = false;
+  let hasPendingFrame = false;
+  let domContentLoadedRetried = false;
+  let releaseMutationGuardFrame = null;
 
   function onThemeToggle(event) {
     event.preventDefault();
@@ -21,25 +25,77 @@
     return button;
   }
 
+  function withMutationGuard(mutator) {
+    isMutating = true;
+    if (releaseMutationGuardFrame !== null) {
+      cancelAnimationFrame(releaseMutationGuardFrame);
+      releaseMutationGuardFrame = null;
+    }
+
+    try {
+      return mutator();
+    } finally {
+      releaseMutationGuardFrame = requestAnimationFrame(() => {
+        isMutating = false;
+        releaseMutationGuardFrame = null;
+      });
+    }
+  }
+
+  function getExpectedThemeButtonState() {
+    const currentTheme = (typeof AppStorage !== 'undefined' && AppStorage.getItem('theme'))
+      || document.documentElement.getAttribute('data-theme')
+      || 'light';
+
+    return currentTheme === 'light'
+      ? { icon: '☽', title: 'Switch to Dark Mode' }
+      : { icon: '☀', title: 'Switch to Light Mode' };
+  }
+
+  function buttonNeedsThemeUpdate(button) {
+    if (!button) return false;
+    const expected = getExpectedThemeButtonState();
+    return button.textContent !== expected.icon
+      || button.title !== expected.title
+      || button.getAttribute('aria-label') !== expected.title;
+  }
+
   function ensureButton(config) {
     const topBar = document.querySelector(config.selector);
     if (!topBar) return false;
 
     let button = document.getElementById(config.id);
     if (!button) {
-      button = createThemeButton(config.id);
+      withMutationGuard(() => {
+        button = createThemeButton(config.id);
+      });
+      return withMutationGuard(() => {
+        const target = document.getElementById(config.beforeId);
+        if (target && target.parentElement === topBar) {
+          topBar.insertBefore(button, target);
+        } else {
+          topBar.insertBefore(button, topBar.firstChild);
+        }
+        return true;
+      });
     }
 
     const target = document.getElementById(config.beforeId);
     if (target && target.parentElement === topBar) {
       if (button !== topBar.firstElementChild || button.nextElementSibling !== target) {
-        topBar.insertBefore(button, target);
+        return withMutationGuard(() => {
+          topBar.insertBefore(button, target);
+          return true;
+        });
       }
     } else if (topBar.firstElementChild !== button) {
-      topBar.insertBefore(button, topBar.firstChild);
+      return withMutationGuard(() => {
+        topBar.insertBefore(button, topBar.firstChild);
+        return true;
+      });
     }
 
-    return true;
+    return false;
   }
 
   function ensureAllButtons() {
@@ -47,15 +103,66 @@
     BUTTON_CONFIGS.forEach((config) => {
       insertedAny = ensureButton(config) || insertedAny;
     });
-    if (insertedAny && typeof updateThemeButtonIcon === 'function') {
-      updateThemeButtonIcon();
+
+    if (typeof updateThemeButtonIcon !== 'function') {
+      return;
     }
+
+    const needsThemeUpdate = BUTTON_CONFIGS.some(({ id }) => buttonNeedsThemeUpdate(document.getElementById(id)));
+    if (insertedAny || needsThemeUpdate) {
+      withMutationGuard(() => {
+        updateThemeButtonIcon();
+      });
+    }
+  }
+
+  function scheduleEnsureAllButtons() {
+    if (hasPendingFrame) return;
+
+    hasPendingFrame = true;
+    requestAnimationFrame(() => {
+      hasPendingFrame = false;
+      ensureAllButtons();
+    });
+  }
+
+  function createObserver() {
+    return new MutationObserver(() => {
+      if (isMutating) return;
+      scheduleEnsureAllButtons();
+    });
+  }
+
+  function observeTargets() {
+    const observer = createObserver();
+    let observedAny = false;
+    let missingTarget = false;
+
+    BUTTON_CONFIGS.forEach((config) => {
+      const topBar = document.querySelector(config.selector);
+      if (!topBar) {
+        missingTarget = true;
+        return;
+      }
+
+      observer.observe(topBar, { childList: true });
+      observedAny = true;
+    });
+
+    if (missingTarget && !domContentLoadedRetried && document.readyState === 'loading') {
+      domContentLoadedRetried = true;
+      document.addEventListener('DOMContentLoaded', () => {
+        ensureAllButtons();
+        observeTargets();
+      }, { once: true });
+    }
+
+    return observedAny;
   }
 
   function init() {
     ensureAllButtons();
-    const observer = new MutationObserver(() => ensureAllButtons());
-    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    observeTargets();
   }
 
   if (document.readyState === 'loading') {
