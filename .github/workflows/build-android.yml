@@ -55,6 +55,16 @@ jobs:
             echo "Manifest does not contain a valid start_url: ${PWA_MANIFEST_URL}"
             exit 1
           fi
+          if [[ "${manifest_start_url}" == *"://"* ]]; then
+            echo "Manifest start_url must not be absolute. Got: ${manifest_start_url}"
+            exit 1
+          fi
+          resolved_start_url="$(python -c 'import urllib.parse, sys; print(urllib.parse.urljoin(sys.argv[1], sys.argv[2]))' "${PWA_MANIFEST_URL}" "${manifest_start_url}")"
+          expected_start_prefix="https://${PWA_HOST}${PWA_PATH}"
+          if [[ "${resolved_start_url}" != "${expected_start_prefix}"* ]]; then
+            echo "Manifest start_url resolves outside expected Goalie path. Got: ${resolved_start_url}, expected prefix: ${expected_start_prefix}"
+            exit 1
+          fi
         
       - name: Build App with Bubblewrap Action
         uses: GoogleChromeLabs/bubblewrap-github-action@v2
@@ -84,6 +94,10 @@ jobs:
             fi
             if [[ -z "${twa_start_url}" || "${twa_start_url}" == *"://"* ]]; then
               echo "twa-manifest.json startUrl is malformed: ${twa_start_url}"
+              exit 1
+            fi
+            if [[ "${twa_start_url}" != "${PWA_PATH}"* ]]; then
+              echo "twa-manifest.json startUrl must start with ${PWA_PATH}. Got: ${twa_start_url}"
               exit 1
             fi
           else
