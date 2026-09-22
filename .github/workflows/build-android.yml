@@ -2,27 +2,84 @@ name: Build Play Store App
 on:
   workflow_dispatch:
 
+env:
+  PWA_HOST: "smarthockeyproducts.com"
+  PWA_PATH: "/SmartHockey-Tracking-Goalie/"
+  PWA_MANIFEST_URL: "https://smarthockeyproducts.com/SmartHockey-Tracking-Goalie/manifest.json"
+  ANDROID_APP_ID: "io.github.asaufzuege_sketch.goalie"
+
 jobs:
   build:
-    name: Build Android TWA
+    name: Build Android TWA (Goalie)
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Validate PWA URL configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${PWA_HOST}" == *"://"* || "${PWA_HOST}" == */* ]]; then
+            echo "PWA_HOST must be a bare hostname without scheme or path. Got: ${PWA_HOST}"
+            exit 1
+          fi
+
+          if [[ "${PWA_PATH}" != /* || "${PWA_PATH}" != */ ]]; then
+            echo "PWA_PATH must start and end with '/'. Got: ${PWA_PATH}"
+            exit 1
+          fi
+
+          expected_manifest_url="https://${PWA_HOST}${PWA_PATH}manifest.json"
+          if [[ "${PWA_MANIFEST_URL}" != "${expected_manifest_url}" ]]; then
+            echo "PWA_MANIFEST_URL mismatch. Expected ${expected_manifest_url}, got ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
+
+          http_code="$(curl -sS -o /tmp/pwa-manifest.json -w '%{http_code}' "${PWA_MANIFEST_URL}")"
+          if [[ "${http_code}" != "200" ]]; then
+            echo "Manifest is not reachable with HTTP 200. Got HTTP ${http_code} at ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
+
+          if ! grep -q '"start_url"' /tmp/pwa-manifest.json; then
+            echo "Manifest does not contain start_url: ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
         
       - name: Build App with Bubblewrap Action
         uses: GoogleChromeLabs/bubblewrap-github-action@v2
         with:
-          manifestUrl: "https://smarthockeyproducts.com/SmartHockey-Tracking-Team-Pro/manifest.json"
-          appId: "io.github.asaufzuege_sketch.twa"
+          manifestUrl: ${{ env.PWA_MANIFEST_URL }}
+          appId: ${{ env.ANDROID_APP_ID }}
           keystoreBase64: ${{ secrets.PLAYSTORE_KEYSTORE }}
           keystorePassword: ${{ secrets.PLAYSTORE_KEYSTORE_PASSWORD }}
           keyAlias: ${{ secrets.PLAYSTORE_KEY_ALIAS }}
           keyPassword: ${{ secrets.PLAYSTORE_KEY_PASSWORD }}
 
+      - name: Verify start URL baked into the bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f twa-manifest.json ]]; then
+            cat twa-manifest.json
+            if grep -q 'comhttps' twa-manifest.json; then
+              echo "Detected malformed URL token comhttps in twa-manifest.json"
+              exit 1
+            fi
+            twa_host="$(python -c 'import json; print(json.load(open("twa-manifest.json", "r", encoding="utf-8")).get("host", ""))')"
+            if [[ "${twa_host}" != "${PWA_HOST}" ]]; then
+              echo "twa-manifest.json host mismatch. Expected ${PWA_HOST}, got ${twa_host}"
+              exit 1
+            fi
+          else
+            echo "twa-manifest.json not found; skipping host verification."
+          fi
+
       - name: Upload .aab Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SmartHockey-PlayStore-Update
+          name: SmartHockey-Goalie-PlayStore
           path: app-release-bundle.aab
