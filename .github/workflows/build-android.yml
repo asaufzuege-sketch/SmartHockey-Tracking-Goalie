@@ -44,12 +44,19 @@ jobs:
           manifest_tmp="$(mktemp)"
           trap 'rm -f "${manifest_tmp}"' EXIT
 
-          if ! http_code="$(curl -L -sS -o "${manifest_tmp}" -w '%{http_code}' "${PWA_MANIFEST_URL}")"; then
+          if ! curl_meta="$(curl -L -sS -o "${manifest_tmp}" -w '%{http_code}\n%{url_effective}' "${PWA_MANIFEST_URL}")"; then
             echo "Failed to fetch manifest from ${PWA_MANIFEST_URL}"
             exit 1
           fi
+          http_code="$(printf '%s\n' "${curl_meta}" | sed -n '1p')"
+          effective_url="$(printf '%s\n' "${curl_meta}" | sed -n '2p')"
           if [[ "${http_code}" != "200" ]]; then
             echo "Manifest is not reachable with HTTP 200. Got HTTP ${http_code} at ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
+          effective_host="$(python -c 'import sys,urllib.parse; print(urllib.parse.urlparse(sys.argv[1]).netloc)' "${effective_url}")"
+          if [[ "${effective_host}" != "${PWA_HOST}" ]]; then
+            echo "Manifest redirected to unexpected host ${effective_host}. Expected host ${PWA_HOST}."
             exit 1
           fi
 
