@@ -55,10 +55,6 @@ jobs:
             echo "Manifest does not contain a valid start_url: ${PWA_MANIFEST_URL}"
             exit 1
           fi
-          if [[ "${manifest_start_url}" == *"://"* ]]; then
-            echo "Manifest start_url must not be absolute. Got: ${manifest_start_url}"
-            exit 1
-          fi
           resolved_start_url="$(python -c 'import urllib.parse, sys; print(urllib.parse.urljoin(sys.argv[1], sys.argv[2]))' "${PWA_MANIFEST_URL}" "${manifest_start_url}")"
           if ! python -c 'import sys,urllib.parse; host,pwa_path,url=sys.argv[1:4]; parsed=urllib.parse.urlparse(url); base=pwa_path.rstrip("/") or "/"; valid_path=parsed.path.startswith("/") if base=="/" else (parsed.path==base or parsed.path.startswith(base + "/")); raise SystemExit(0 if (parsed.scheme=="https" and parsed.netloc==host and valid_path) else 1)' "${PWA_HOST}" "${PWA_PATH}" "${resolved_start_url}"; then
             echo "Manifest start_url resolves outside expected Goalie path. Got: ${resolved_start_url}, expected host/path: https://${PWA_HOST}${PWA_PATH}"
