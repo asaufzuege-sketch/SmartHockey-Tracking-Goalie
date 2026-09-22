@@ -2,27 +2,132 @@ name: Build Play Store App
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  PWA_HOST: "smarthockeyproducts.com"
+  PWA_PATH: "/SmartHockey-Tracking-Goalie/"
+  PWA_MANIFEST_URL: "https://smarthockeyproducts.com/SmartHockey-Tracking-Goalie/manifest.json"
+  ANDROID_APP_ID: "io.github.asaufzuege_sketch.goalie"
+
 jobs:
   build:
-    name: Build Android TWA
+    name: Build Android TWA (Goalie)
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Validate PWA URL configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${PWA_HOST}" == *"://"* || "${PWA_HOST}" == */* ]]; then
+            echo "PWA_HOST must be a bare hostname without scheme or path. Got: ${PWA_HOST}"
+            exit 1
+          fi
+
+          if [[ "${PWA_PATH}" != /* || "${PWA_PATH}" != */ ]]; then
+            echo "PWA_PATH must start and end with '/'. Got: ${PWA_PATH}"
+            exit 1
+          fi
+
+          expected_manifest_url="https://${PWA_HOST}${PWA_PATH}manifest.json"
+          if [[ "${PWA_MANIFEST_URL}" != "${expected_manifest_url}" ]]; then
+            echo "PWA_MANIFEST_URL mismatch. Expected ${expected_manifest_url}, got ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
+
+          manifest_tmp="$(mktemp)"
+          headers_tmp="$(mktemp)"
+          trap 'rm -f "${manifest_tmp}" "${headers_tmp}"' EXIT
+
+          expected_host="$(python -c 'import sys; print(sys.argv[1].lower())' "${PWA_HOST}")"
+          current_url="${PWA_MANIFEST_URL}"
+          for _ in 1 2 3 4 5; do
+            if ! http_code="$(curl -sS -D "${headers_tmp}" -o "${manifest_tmp}" -w '%{http_code}' "${current_url}")"; then
+              echo "Failed to fetch manifest from ${current_url}"
+              exit 1
+            fi
+            if [[ "${http_code}" =~ ^3[0-9][0-9]$ ]]; then
+              location_header="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, "", $0); sub(/^[^:]*:[[:space:]]*/, "", $0); print; exit}' "${headers_tmp}")"
+              if [[ -z "${location_header}" ]]; then
+                echo "Manifest redirect from ${current_url} has no Location header."
+                exit 1
+              fi
+              next_url="$(python -c 'import sys,urllib.parse; print(urllib.parse.urljoin(sys.argv[1], sys.argv[2]))' "${current_url}" "${location_header}")"
+              next_host="$(python -c 'import sys,urllib.parse; print((urllib.parse.urlparse(sys.argv[1]).hostname or "").lower())' "${next_url}")"
+              if [[ "${next_host}" != "${expected_host}" ]]; then
+                echo "Manifest redirect to unexpected host ${next_host}. Expected host ${PWA_HOST}."
+                exit 1
+              fi
+              current_url="${next_url}"
+              continue
+            fi
+            break
+          done
+
+          if [[ "${http_code}" != "200" ]]; then
+            echo "Manifest is not reachable with HTTP 200. Got HTTP ${http_code} at ${current_url}"
+            exit 1
+          fi
+          final_manifest_url="${current_url}"
+
+          manifest_start_url="$(python -c 'import json,sys; print((json.load(open(sys.argv[1], "r", encoding="utf-8")).get("start_url") or "").strip())' "${manifest_tmp}")"
+          if [[ -z "${manifest_start_url}" ]]; then
+            echo "Manifest does not contain a valid start_url: ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
+          resolved_start_url="$(python -c 'import urllib.parse,sys; manifest_url,start_url=sys.argv[1:3]; manifest_dir=urllib.parse.urljoin(manifest_url, "."); print(urllib.parse.urljoin(manifest_dir, start_url))' "${final_manifest_url}" "${manifest_start_url}")"
+          if ! python -c 'import sys,urllib.parse; host,pwa_path,url=sys.argv[1:4]; parsed=urllib.parse.urlparse(url); base=pwa_path.rstrip("/") or "/"; valid_path=parsed.path.startswith("/") if base=="/" else (parsed.path==base or parsed.path.startswith(base + "/")); host_ok=(parsed.hostname or "").lower()==host.lower(); raise SystemExit(0 if (parsed.scheme=="https" and host_ok and valid_path) else 1)' "${PWA_HOST}" "${PWA_PATH}" "${resolved_start_url}"; then
+            echo "Manifest start_url resolves outside expected Goalie path. Got: ${resolved_start_url}, expected host/path: https://${PWA_HOST}${PWA_PATH}"
+            exit 1
+          fi
         
       - name: Build App with Bubblewrap Action
         uses: GoogleChromeLabs/bubblewrap-github-action@v2
         with:
-          manifestUrl: "https://smarthockeyproducts.com/SmartHockey-Tracking-Team-Pro/manifest.json"
-          appId: "io.github.asaufzuege_sketch.twa"
+          manifestUrl: ${{ env.PWA_MANIFEST_URL }}
+          appId: ${{ env.ANDROID_APP_ID }}
           keystoreBase64: ${{ secrets.PLAYSTORE_KEYSTORE }}
           keystorePassword: ${{ secrets.PLAYSTORE_KEYSTORE_PASSWORD }}
           keyAlias: ${{ secrets.PLAYSTORE_KEY_ALIAS }}
           keyPassword: ${{ secrets.PLAYSTORE_KEY_PASSWORD }}
 
+      - name: Verify start URL baked into the bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f twa-manifest.json ]]; then
+            python -c 'import json; data=json.load(open("twa-manifest.json", "r", encoding="utf-8")); print(json.dumps({"host": data.get("host"), "startUrl": data.get("startUrl")}, indent=2))'
+            if grep -q 'comhttps' twa-manifest.json; then
+              echo "Detected malformed URL token comhttps in twa-manifest.json"
+              exit 1
+            fi
+            twa_host="$(python -c 'import json; print(json.load(open("twa-manifest.json", "r", encoding="utf-8")).get("host", ""))')"
+            twa_start_url="$(python -c 'import json; print((json.load(open("twa-manifest.json", "r", encoding="utf-8")).get("startUrl") or "").strip())')"
+            if [[ "${twa_host}" != "${PWA_HOST}" ]]; then
+              echo "twa-manifest.json host mismatch. Expected ${PWA_HOST}, got ${twa_host}"
+              exit 1
+            fi
+            if [[ -z "${twa_start_url}" || "${twa_start_url}" == *"://"* ]]; then
+              echo "twa-manifest.json startUrl is malformed: ${twa_start_url}"
+              exit 1
+            fi
+            if ! python -c 'import sys; pwa_path,start_url=sys.argv[1:3]; base=pwa_path.rstrip("/") or "/"; valid=start_url.startswith("/") if base=="/" else (start_url==base or start_url.startswith(base + "/")); raise SystemExit(0 if valid else 1)' "${PWA_PATH}" "${twa_start_url}"; then
+              echo "twa-manifest.json startUrl must start with ${PWA_PATH}. Got: ${twa_start_url}"
+              exit 1
+            fi
+          else
+            echo "twa-manifest.json not found after Bubblewrap build; cannot verify baked start URL."
+            exit 1
+          fi
+
       - name: Upload .aab Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SmartHockey-PlayStore-Update
+          name: SmartHockey-Goalie-PlayStore
           path: app-release-bundle.aab

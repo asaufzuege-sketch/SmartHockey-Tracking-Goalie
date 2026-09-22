@@ -1,9 +1,10 @@
 {
-  "appId": "io.github.asaufzuege_sketch.twa",
-  "appName": "SmartHockey Team Tracker",
+  "appId": "io.github.asaufzuege_sketch.goalie",
+  "appName": "SmartHockey Goalie",
   "webDir": ".",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "hostname": "smarthockeyproducts.com"
   },
   "plugins": {}
 }

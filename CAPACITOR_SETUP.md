@@ -1,47 +1,40 @@
-# Capacitor Setup Guide – SmartHockey Team Tracker Pro
+# Capacitor / TWA Setup – SmartHockey Goalie
 
-## Prerequisites
-- Node.js (v16+): https://nodejs.org
-- Android Studio: https://developer.android.com/studio
-- Java JDK 17+
+## Canonical Goalie PWA values
 
-## Initial Setup
-1. Clone the repo and install dependencies:
-   ```bash
-   git clone https://github.com/asaufzuege-sketch/SmartHockey-Tracking-Team-Pro.git
-   cd SmartHockey-Tracking-Team-Pro
-   npm install
-   ```
+| Setting | Value |
+|---|---|
+| Host | `smarthockeyproducts.com` |
+| Start path | `/SmartHockey-Tracking-Goalie/` |
+| Manifest URL | `https://smarthockeyproducts.com/SmartHockey-Tracking-Goalie/manifest.json` |
+| Android App ID | `io.github.asaufzuege_sketch.goalie` |
 
-2. Add Android platform & sync:
-   ```bash
-   npx cap add android
-   npx cap sync android
-   ```
+## Double-scheme pitfall (broken start URL)
 
-3. Open in Android Studio:
-   ```bash
-   npx cap open android
-   ```
+Bubblewrap expects a **bare host** (`smarthockeyproducts.com`) and a path (`/SmartHockey-Tracking-Goalie/`).
+If the host is entered with `https://`, Bubblewrap can produce malformed double-prefixed start URLs.
 
-## Building the Release AAB
-1. In Android Studio: Build → Generate Signed Bundle / APK
-2. Select "Android App Bundle"
-3. Sign with your existing keystore
-4. Build as Release
-5. Upload the `.aab` to Google Play Console
+Use the workflow env values as the single source of truth and keep:
+- host without scheme/path
+- path with leading and trailing slash
+- manifest URL exactly `https://<host><path>manifest.json`
 
-## Google Play Console – Subscription Setup
-After uploading the new `.aab` with billing permission:
-1. Go to: Monetize → Products → Subscriptions
-2. Click "Create subscription"
-3. Product ID: `pro_yearly_subscription`
-4. Name: SmartHockey Pro – Yearly Subscription
-5. Add base plan: Yearly, $5.00/year
-6. Set status to Active
+## Build and installation notes
 
-## Important Notes
-- The app still works as a PWA on GitHub Pages (billing is skipped in browser)
-- The billing.js module detects native vs browser automatically
-- Use the same keystore as your existing TWA to maintain the same signing key
-- Package name must remain: `io.github.asaufzuege_sketch.twa`
+- The build output `app-release-bundle.aab` is for Google Play upload and **cannot be installed directly** on Android devices.
+- Test via Play Console **Internal testing**, or generate installable APKs with bundletool:
+
+```bash
+bundletool build-apks --bundle=app-release-bundle.aab --output=app.apks --mode=universal
+unzip app.apks universal.apk
+```
+
+## Digital Asset Links requirement
+
+To keep the TWA in full-screen mode (no browser URL bar), the website must serve:
+
+`https://smarthockeyproducts.com/.well-known/assetlinks.json`
+
+That file must contain:
+- package name `io.github.asaufzuege_sketch.goalie`
+- SHA-256 certificate fingerprints of the signing key used for release (Play App Signing key/final signing key path)
