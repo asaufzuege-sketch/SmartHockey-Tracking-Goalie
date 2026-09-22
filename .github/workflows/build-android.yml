@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-          if ! http_code="$(curl -sS -o /tmp/pwa-manifest.json -w '%{http_code}' "${PWA_MANIFEST_URL}")"; then
+          if ! http_code="$(curl -L -sS -o /tmp/pwa-manifest.json -w '%{http_code}' "${PWA_MANIFEST_URL}")"; then
             echo "Failed to fetch manifest from ${PWA_MANIFEST_URL}"
             exit 1
           fi
