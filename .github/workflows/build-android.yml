@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f twa-manifest.json ]]; then
-            cat twa-manifest.json
+            python -c 'import json; data=json.load(open("twa-manifest.json", "r", encoding="utf-8")); print(json.dumps({"host": data.get("host"), "startUrl": data.get("startUrl")}, indent=2))'
             if grep -q 'comhttps' twa-manifest.json; then
               echo "Detected malformed URL token comhttps in twa-manifest.json"
               exit 1
