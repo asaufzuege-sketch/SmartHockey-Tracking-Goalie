@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
           resolved_start_url="$(python -c 'import urllib.parse, sys; print(urllib.parse.urljoin(sys.argv[1], sys.argv[2]))' "${PWA_MANIFEST_URL}" "${manifest_start_url}")"
-          if ! python -c 'import sys,urllib.parse; host,pwa_path,url=sys.argv[1:4]; parsed=urllib.parse.urlparse(url); path_no_slash=pwa_path.rstrip("/"); valid_path=(parsed.path==path_no_slash or parsed.path.startswith(pwa_path)); raise SystemExit(0 if (parsed.scheme=="https" and parsed.netloc==host and valid_path) else 1)' "${PWA_HOST}" "${PWA_PATH}" "${resolved_start_url}"; then
+          if ! python -c 'import sys,urllib.parse; host,pwa_path,url=sys.argv[1:4]; parsed=urllib.parse.urlparse(url); base=pwa_path.rstrip("/"); valid_path=(parsed.path==base or parsed.path.startswith(base + "/")); raise SystemExit(0 if (parsed.scheme=="https" and parsed.netloc==host and valid_path) else 1)' "${PWA_HOST}" "${PWA_PATH}" "${resolved_start_url}"; then
             echo "Manifest start_url resolves outside expected Goalie path. Got: ${resolved_start_url}, expected host/path: https://${PWA_HOST}${PWA_PATH}"
             exit 1
           fi
@@ -95,7 +95,7 @@ jobs:
               echo "twa-manifest.json startUrl is malformed: ${twa_start_url}"
               exit 1
             fi
-            if ! python -c 'import sys; pwa_path,start_url=sys.argv[1:3]; path_no_slash=pwa_path.rstrip("/"); raise SystemExit(0 if (start_url==path_no_slash or start_url.startswith(pwa_path)) else 1)' "${PWA_PATH}" "${twa_start_url}"; then
+            if ! python -c 'import sys; pwa_path,start_url=sys.argv[1:3]; base=pwa_path.rstrip("/"); raise SystemExit(0 if (start_url==base or start_url.startswith(base + "/")) else 1)' "${PWA_PATH}" "${twa_start_url}"; then
               echo "twa-manifest.json startUrl must start with ${PWA_PATH}. Got: ${twa_start_url}"
               exit 1
             fi
