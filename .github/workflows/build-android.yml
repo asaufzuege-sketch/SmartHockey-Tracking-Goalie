@@ -2,6 +2,9 @@ name: Build Play Store App
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   PWA_HOST: "smarthockeyproducts.com"
   PWA_PATH: "/SmartHockey-Tracking-Goalie/"
@@ -38,14 +41,18 @@ jobs:
             exit 1
           fi
 
-          http_code="$(curl -sS -o /tmp/pwa-manifest.json -w '%{http_code}' "${PWA_MANIFEST_URL}")"
+          if ! http_code="$(curl -sS -o /tmp/pwa-manifest.json -w '%{http_code}' "${PWA_MANIFEST_URL}")"; then
+            echo "Failed to fetch manifest from ${PWA_MANIFEST_URL}"
+            exit 1
+          fi
           if [[ "${http_code}" != "200" ]]; then
             echo "Manifest is not reachable with HTTP 200. Got HTTP ${http_code} at ${PWA_MANIFEST_URL}"
             exit 1
           fi
 
-          if ! grep -q '"start_url"' /tmp/pwa-manifest.json; then
-            echo "Manifest does not contain start_url: ${PWA_MANIFEST_URL}"
+          manifest_start_url="$(python -c 'import json; print((json.load(open("/tmp/pwa-manifest.json", "r", encoding="utf-8")).get("start_url") or "").strip())')"
+          if [[ -z "${manifest_start_url}" ]]; then
+            echo "Manifest does not contain a valid start_url: ${PWA_MANIFEST_URL}"
             exit 1
           fi
         
@@ -70,8 +77,13 @@ jobs:
               exit 1
             fi
             twa_host="$(python -c 'import json; print(json.load(open("twa-manifest.json", "r", encoding="utf-8")).get("host", ""))')"
+            twa_start_url="$(python -c 'import json; print((json.load(open("twa-manifest.json", "r", encoding="utf-8")).get("startUrl") or "").strip())')"
             if [[ "${twa_host}" != "${PWA_HOST}" ]]; then
               echo "twa-manifest.json host mismatch. Expected ${PWA_HOST}, got ${twa_host}"
+              exit 1
+            fi
+            if [[ -z "${twa_start_url}" || "${twa_start_url}" == *"://"* ]]; then
+              echo "twa-manifest.json startUrl is malformed: ${twa_start_url}"
               exit 1
             fi
           else
