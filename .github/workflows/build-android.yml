@@ -87,7 +87,8 @@ jobs:
               exit 1
             fi
           else
-            echo "twa-manifest.json not found; skipping host verification."
+            echo "twa-manifest.json not found after Bubblewrap build; cannot verify baked start URL."
+            exit 1
           fi
 
       - name: Upload .aab Artifact
