@@ -54,8 +54,9 @@ jobs:
             echo "Manifest is not reachable with HTTP 200. Got HTTP ${http_code} at ${PWA_MANIFEST_URL}"
             exit 1
           fi
-          effective_host="$(python -c 'import sys,urllib.parse; print(urllib.parse.urlparse(sys.argv[1]).netloc)' "${effective_url}")"
-          if [[ "${effective_host}" != "${PWA_HOST}" ]]; then
+          effective_host="$(python -c 'import sys,urllib.parse; print((urllib.parse.urlparse(sys.argv[1]).hostname or "").lower())' "${effective_url}")"
+          expected_host="$(python -c 'import sys; print(sys.argv[1].lower())' "${PWA_HOST}")"
+          if [[ "${effective_host}" != "${expected_host}" ]]; then
             echo "Manifest redirected to unexpected host ${effective_host}. Expected host ${PWA_HOST}."
             exit 1
           fi
