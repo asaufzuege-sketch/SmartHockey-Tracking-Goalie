@@ -4352,8 +4352,55 @@ body.locked {
 }
 
 @media (max-width: 900px) {
-  .goalie-slot {
-    grid-template-columns: auto 72px minmax(140px, 1fr) 48px;
+  #goalieSelectionPage .player-list,
+  #goalieSelectionPage .goalie-only-list {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  #goalieSelectionPage .player-list li.goalie-slot {
+    grid-template-columns: auto 64px minmax(0, 1fr) 44px;
+    gap: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #goalieSelectionPage .player-list .goalie-slot .num-input,
+  #goalieSelectionPage .player-list .goalie-slot .name-input {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  #goalieSelectionPage .player-list .goalie-slot .pos-fixed,
+  #goalieSelectionPage .player-list .goalie-slot .position-box {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    justify-self: end;
+  }
+
+  #goalieSelectionPage .player-list .goalie-slot .set-active-btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 400px) {
+  #goalieSelectionPage .player-list li.goalie-slot {
+    grid-template-columns: auto 56px minmax(0, 1fr) 40px;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  #goalieSelectionPage .player-list .goalie-slot .pos-fixed,
+  #goalieSelectionPage .player-list .goalie-slot .position-box {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
   }
 }
 
