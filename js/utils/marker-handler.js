@@ -233,6 +233,7 @@ App.markerHandler = {
       }
 
       dot.addEventListener("click", (ev) => {
+        ev.stopPropagation();
         if (ev.detail !== 0) return;
         tryRemoveDot(ev);
       });
