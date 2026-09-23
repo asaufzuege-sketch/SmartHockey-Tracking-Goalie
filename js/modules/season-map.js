@@ -1070,7 +1070,7 @@ App.seasonMap = {
       AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
       AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
       AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
-      AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
+      App.goalMap?.clearSeasonMapExportHashes?.();
       this.render();
       return;
     }
@@ -1126,7 +1126,7 @@ App.seasonMap = {
     } else {
       AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
     }
-    AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
+    App.goalMap?.clearSeasonMapExportHashes?.(activeGoalieName);
     this.render();
   },
 

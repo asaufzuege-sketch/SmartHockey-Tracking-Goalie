@@ -1778,7 +1778,7 @@ setStickyOffsets() {
       if (App.storage && typeof App.storage.clearOnIceShotCounts === "function") {
         App.storage.clearOnIceShotCounts();
       }
-      App.goalMap?.reset?.(true);
+      App.goalMap?.reset?.({ skipConfirm: true });
       App.storage.saveStatsData();
       App.storage.savePlayerTimes();
       if (App.statsTable && typeof App.statsTable.render === "function") {
@@ -2145,7 +2145,7 @@ setStickyOffsets() {
       AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
       AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
       AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
-      AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
+      App.goalMap?.clearSeasonMapExportHashes?.();
     }
 
     App.seasonMap?.render();
