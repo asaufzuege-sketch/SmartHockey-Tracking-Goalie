@@ -475,7 +475,6 @@ App.goalMap = {
   clearSeasonMapExportHashes(goalieName = "") {
     const teamId = App.helpers.getCurrentTeamId();
     const baseKey = `seasonMapLastExportHash_${teamId}`;
-    const storagePrefixes = Array.from(new Set([AppStorage.prefix || "", AppStorage.legacyPrefix || ""]));
     AppStorage.removeItem(baseKey);
 
     const normalizedGoalie = this.normalizeGoalieName(goalieName);
@@ -484,17 +483,32 @@ App.goalMap = {
       return;
     }
 
-    storagePrefixes.forEach((storagePrefix) => {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const rawKey = localStorage.key(i);
-        if (!rawKey || (storagePrefix && !rawKey.startsWith(storagePrefix))) continue;
-        const unprefixed = storagePrefix ? rawKey.slice(storagePrefix.length) : rawKey;
-        if (unprefixed.startsWith(`${baseKey}_`)) {
-          keysToRemove.push(rawKey);
-        }
-      }
-      keysToRemove.forEach((key) => localStorage.removeItem(key));
+    const allNormalizedGoalies = new Set();
+    const collectName = (name) => {
+      const normalizedName = this.normalizeGoalieName(name);
+      if (normalizedName) allNormalizedGoalies.add(normalizedName);
+    };
+    const collectNamesFromBucketData = (bucketData) => {
+      Object.values(bucketData || {}).forEach((goalieCounts) => {
+        if (!goalieCounts || typeof goalieCounts !== "object") return;
+        Object.keys(goalieCounts).forEach(collectName);
+      });
+    };
+    const collectNamesFromMarkerData = (markerData) => {
+      (Array.isArray(markerData) ? markerData : []).forEach((markers) => {
+        (Array.isArray(markers) ? markers : []).forEach((marker) => collectName(marker?.player));
+      });
+    };
+
+    collectNamesFromMarkerData(this.getCurrentMarkersFromDOM());
+    collectNamesFromMarkerData(App.helpers.safeJSONParse(`seasonMapMarkers_${teamId}`, [[], []]) || [[], []]);
+    collectNamesFromBucketData(this.readTimeDataWithPlayers());
+    collectNamesFromBucketData(App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {});
+    (App.helpers.safeJSONParse(`playerSelectionData_${teamId}`, []) || []).forEach(player => collectName(player?.name));
+    Object.keys(App.helpers.safeJSONParse(`goalieSeasonData_${teamId}`, {}) || {}).forEach(collectName);
+
+    allNormalizedGoalies.forEach((goalieKey) => {
+      AppStorage.removeItem(`${baseKey}_${goalieKey}`);
     });
   },
 
