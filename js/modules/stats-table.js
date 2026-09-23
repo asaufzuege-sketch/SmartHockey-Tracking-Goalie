@@ -3,16 +3,31 @@ App.statsTable = {
 
   init() {
     this.container = document.getElementById("statsContainer");
-    document.getElementById("exportBtn")?.addEventListener("click", () => {
-      if (App.goalMap?.exportAll) {
-        App.goalMap.exportAll();
-      } else if (App.csvHandler?.exportGoalieGameStats) {
-        App.csvHandler.exportGoalieGameStats();
+    const exportBtn = document.getElementById("exportBtn");
+    exportBtn?.addEventListener("click", () => {
+      if (App.helpers?.showDownloadChoiceDialog) {
+        App.helpers.showDownloadChoiceDialog({
+          onPdf: () => App.goalMap?.exportAsPDF?.(),
+          onExcel: () => {
+            if (App.goalMap?.exportWorkbook) return App.goalMap.exportWorkbook();
+            return App.csvHandler?.exportGoalieGameStats?.();
+          }
+        });
+        return;
       }
+      App.goalMap?.exportAll?.();
     });
-    document.getElementById("resetBtn")?.addEventListener("click", () => {
-      App.goalMap?.reset?.();
-    });
+
+    const resetBtn = document.getElementById("resetBtn");
+    if (resetBtn && App.helpers?.bindLongPressAction) {
+      App.helpers.bindLongPressAction(resetBtn, {
+        longPressMs: 800,
+        onClick: () => App.goalMap?.reset?.({ allGoalies: false }),
+        onLongPress: () => App.goalMap?.reset?.({ allGoalies: true })
+      });
+    } else {
+      resetBtn?.addEventListener("click", () => App.goalMap?.reset?.({ allGoalies: false }));
+    }
   },
 
   getRows() {
