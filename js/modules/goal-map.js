@@ -177,6 +177,10 @@ App.goalMap = {
         if (!gesture || gesture.pointerId !== pointerId) return;
         const point = getPointFromEvent(event, pointerId);
         if (!point) return;
+        if (!getPosFromEvent(event, pointerId)) {
+          cancelGesture();
+          return;
+        }
         const moved = Math.hypot(point.clientX - gesture.startX, point.clientY - gesture.startY);
         if (moved > moveThreshold) {
           cancelGesture();
