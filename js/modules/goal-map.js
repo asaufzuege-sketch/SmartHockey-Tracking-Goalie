@@ -86,10 +86,17 @@ App.goalMap = {
         pressTimer = null;
       };
 
-      const getPointFromEvent = (event) => event.changedTouches?.[0] || event.touches?.[0] || event;
+      const getPointFromEvent = (event, pointerId = null) => {
+        if (typeof pointerId === "number" && (event.changedTouches || event.touches)) {
+          const touches = [...(event.changedTouches || []), ...(event.touches || [])];
+          const matchingTouch = touches.find(touch => touch.identifier === pointerId);
+          if (matchingTouch) return matchingTouch;
+        }
+        return event.changedTouches?.[0] || event.touches?.[0] || event;
+      };
 
-      const getPosFromEvent = (event) => {
-        const point = getPointFromEvent(event);
+      const getPosFromEvent = (event, pointerId = null) => {
+        const point = getPointFromEvent(event, pointerId);
         if (!point) return null;
         return App.markerHandler.getImagePercentFromClientPoint(
           box,
@@ -118,7 +125,7 @@ App.goalMap = {
           return;
         }
 
-        const pos = getPosFromEvent(event);
+        const pos = getPosFromEvent(event, gesture?.pointerId ?? null);
         if (!pos) return;
 
         const dot = App.markerHandler.createMarkerPercent(
@@ -147,8 +154,8 @@ App.goalMap = {
       };
 
       const startGesture = (event, pointerId, options = {}) => {
-        if (event.target.closest(".marker-dot")) return;
-        const point = getPointFromEvent(event);
+        if (gesture || event.target.closest(".marker-dot")) return;
+        const point = getPointFromEvent(event, pointerId);
         if (!point) return;
 
         gesture = {
@@ -168,7 +175,7 @@ App.goalMap = {
 
       const updateGesture = (event, pointerId) => {
         if (!gesture || gesture.pointerId !== pointerId) return;
-        const point = getPointFromEvent(event);
+        const point = getPointFromEvent(event, pointerId);
         if (!point) return;
         const moved = Math.hypot(point.clientX - gesture.startX, point.clientY - gesture.startY);
         if (moved > moveThreshold) {
@@ -216,18 +223,23 @@ App.goalMap = {
           }
         });
       } else {
-        const fallbackPointerId = "touch";
         box.addEventListener("touchstart", (event) => {
-          startGesture(event, fallbackPointerId);
+          const touch = event.changedTouches?.[0] || event.touches?.[0];
+          if (!touch) return;
+          startGesture(event, touch.identifier);
         }, { passive: true });
         box.addEventListener("touchmove", (event) => {
-          updateGesture(event, fallbackPointerId);
+          if (!gesture) return;
+          updateGesture(event, gesture.pointerId);
         }, { passive: true });
         box.addEventListener("touchend", (event) => {
-          finishGesture(event, fallbackPointerId);
+          if (!gesture) return;
+          finishGesture(event, gesture.pointerId);
         }, { passive: true });
-        box.addEventListener("touchcancel", () => {
-          cancelGesture();
+        box.addEventListener("touchcancel", (event) => {
+          if (!gesture) return;
+          const point = getPointFromEvent(event, gesture.pointerId);
+          if (point) cancelGesture();
         }, { passive: true });
       }
     });
