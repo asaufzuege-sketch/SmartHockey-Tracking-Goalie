@@ -56,6 +56,16 @@ App.seasonTable = {
     });
 
     document.getElementById("exportSeasonMapPageBtn")?.addEventListener("click", () => {
+      if (App.helpers?.showDownloadChoiceDialog) {
+        App.helpers.showDownloadChoiceDialog({
+          onPdf: () => App.seasonMap?.exportAsPDF?.(),
+          onExcel: () => {
+            if (this.exportSeasonWorkbook) return this.exportSeasonWorkbook();
+            return this.exportCSV();
+          }
+        });
+        return;
+      }
       if (App.seasonMap?.exportAll) {
         App.seasonMap.exportAll();
       } else {
@@ -63,9 +73,29 @@ App.seasonTable = {
       }
     });
 
-    document.getElementById("resetSeasonMapBtn")?.addEventListener("click", () => {
-      this.reset();
-    });
+    const resetSeasonMapBtn = document.getElementById("resetSeasonMapBtn");
+    if (resetSeasonMapBtn && App.helpers?.bindLongPressAction) {
+      App.helpers.bindLongPressAction(resetSeasonMapBtn, {
+        longPressMs: 800,
+        onClick: () => App.seasonMap?.reset?.({ allGoalies: false }),
+        onLongPress: () => App.seasonMap?.reset?.({ allGoalies: true })
+      });
+    } else {
+      resetSeasonMapBtn?.addEventListener("click", () => {
+        App.seasonMap?.reset?.({ allGoalies: false });
+      });
+    }
+
+    const resetSeasonBtn = document.getElementById("resetSeasonBtn");
+    if (resetSeasonBtn && App.helpers?.bindLongPressAction) {
+      App.helpers.bindLongPressAction(resetSeasonBtn, {
+        longPressMs: 800,
+        onClick: () => this.reset({ allGoalies: false }),
+        onLongPress: () => this.reset({ allGoalies: true })
+      });
+    } else {
+      resetSeasonBtn?.addEventListener("click", () => this.reset({ allGoalies: false }));
+    }
     
     // Add Time Modal Event Listeners
     document.getElementById("addTimeCancelBtn")?.addEventListener("click", () => {
@@ -2035,27 +2065,57 @@ setStickyOffsets() {
     }
   },
 
-  reset() {
-    if (!confirm("Delete Season data and Season Map markers?")) return;
+  reset(options = {}) {
+    const { allGoalies = false } = options;
+    const normalize = App.seasonMap?.normalizeGoalieName
+      ? (value) => App.seasonMap.normalizeGoalieName(value)
+      : (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-    App.data.seasonData = {};
-    App.data.goalieSeasonData = {};
-    App.data.goalieExportSnapshot = {};
-    const teamId = App.helpers.getCurrentTeamId();
-    AppStorage.removeItem(`seasonData_${teamId}`);
-    AppStorage.removeItem(`goalieSeasonData_${teamId}`);
-    AppStorage.removeItem(`goalieExportSnapshot_${teamId}`);
-    AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
-    AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
-    AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
-    AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
-    if (App.seasonMap) {
-      App.seasonMap.selectedGoalie = "";
-      App.seasonMap.render();
-    } else {
-      this.render();
+    const activeGoalieName = App.goalMap?.getActiveGoalie?.()?.name || App.helpers.getStoredActiveGoalieName() || "";
+    const normalizedActiveGoalie = normalize(activeGoalieName);
+    if (!allGoalies && !normalizedActiveGoalie) {
+      alert("Please select an active goalie first.");
+      return;
     }
-    alert("Season data deleted.");
+
+    if (allGoalies) {
+      if (!confirm("Delete season data for ALL goalies?")) return;
+    } else if (!confirm(`Delete season data for ${activeGoalieName}?`)) {
+      return;
+    }
+
+    const teamId = App.helpers.getCurrentTeamId();
+
+    if (allGoalies) {
+      App.data.goalieSeasonData = {};
+      App.data.goalieExportSnapshot = {};
+    } else {
+      const removeByNormalizedName = (source) => {
+        const next = {};
+        Object.entries(source || {}).forEach(([key, value]) => {
+          if (normalize(key) === normalizedActiveGoalie) return;
+          next[key] = value;
+        });
+        return next;
+      };
+      App.data.goalieSeasonData = removeByNormalizedName(App.data.goalieSeasonData);
+      App.data.goalieExportSnapshot = removeByNormalizedName(App.data.goalieExportSnapshot);
+    }
+
+    if (Object.keys(App.data.goalieSeasonData || {}).length) {
+      AppStorage.setItem(`goalieSeasonData_${teamId}`, JSON.stringify(App.data.goalieSeasonData));
+    } else {
+      AppStorage.removeItem(`goalieSeasonData_${teamId}`);
+    }
+
+    if (Object.keys(App.data.goalieExportSnapshot || {}).length) {
+      AppStorage.setItem(`goalieExportSnapshot_${teamId}`, JSON.stringify(App.data.goalieExportSnapshot));
+    } else {
+      AppStorage.removeItem(`goalieExportSnapshot_${teamId}`);
+    }
+
+    App.seasonMap?.render();
+    this.render();
   },
   
   // Add click handler for statistics cells

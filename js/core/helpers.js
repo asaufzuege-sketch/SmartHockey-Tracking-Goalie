@@ -208,5 +208,172 @@ App.helpers = {
       }
       return fallback;
     }
+  },
+
+  bindLongPressAction(button, { onClick, onLongPress, longPressMs = 800 } = {}) {
+    if (!button) return;
+    let timer = null;
+    let pointerActive = false;
+    let longPressTriggered = false;
+    let suppressNextClick = false;
+
+    const clearTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    };
+
+    const startTimer = (triggerLongPress) => {
+      clearTimer();
+      longPressTriggered = false;
+      timer = setTimeout(() => {
+        longPressTriggered = true;
+        suppressNextClick = true;
+        triggerLongPress?.();
+      }, Math.max(0, Number(longPressMs) || 800));
+    };
+
+    if (typeof window.PointerEvent === "function") {
+      button.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        pointerActive = true;
+        startTimer(() => onLongPress?.(event));
+      });
+      button.addEventListener("pointerup", (event) => {
+        if (!pointerActive) return;
+        pointerActive = false;
+        clearTimer();
+        if (!longPressTriggered) {
+          suppressNextClick = true;
+          onClick?.(event);
+        }
+      });
+      button.addEventListener("pointercancel", () => {
+        pointerActive = false;
+        clearTimer();
+      });
+      button.addEventListener("pointerleave", () => {
+        if (!pointerActive) return;
+        pointerActive = false;
+        clearTimer();
+      });
+    } else {
+      button.addEventListener("touchstart", (event) => {
+        pointerActive = true;
+        startTimer(() => onLongPress?.(event));
+      }, { passive: true });
+      button.addEventListener("touchend", (event) => {
+        if (!pointerActive) return;
+        pointerActive = false;
+        clearTimer();
+        if (!longPressTriggered) {
+          suppressNextClick = true;
+          onClick?.(event);
+        }
+      });
+      button.addEventListener("touchcancel", () => {
+        pointerActive = false;
+        clearTimer();
+      });
+      button.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        pointerActive = true;
+        startTimer(() => onLongPress?.(event));
+      });
+      button.addEventListener("mouseup", (event) => {
+        if (!pointerActive || event.button !== 0) return;
+        pointerActive = false;
+        clearTimer();
+        if (!longPressTriggered) {
+          suppressNextClick = true;
+          onClick?.(event);
+        }
+      });
+      button.addEventListener("mouseleave", () => {
+        if (!pointerActive) return;
+        pointerActive = false;
+        clearTimer();
+      });
+    }
+
+    button.addEventListener("click", (event) => {
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      onClick?.(event);
+    });
+  },
+
+  showDownloadChoiceDialog({ onPdf, onExcel } = {}) {
+    if (!document?.body) {
+      onPdf?.();
+      return;
+    }
+
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.style.display = "flex";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width:420px;width:92%;text-align:center;">
+        <h3 style="margin-top:0;">Download</h3>
+        <div class="modal-buttons" style="justify-content:center;flex-wrap:wrap;">
+          <button type="button" data-action="pdf" class="confirm-btn">📄 Graphics (PDF)</button>
+          <button type="button" data-action="excel" class="confirm-btn">📊 Statistics (Excel)</button>
+          <button type="button" data-action="both" class="confirm-btn">Both</button>
+          <button type="button" data-action="cancel" class="cancel-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    const runPdf = () => Promise.resolve(onPdf?.());
+    const runExcel = () => Promise.resolve(onExcel?.());
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const close = () => {
+      document.removeEventListener("keydown", onKeyDown);
+      modal.remove();
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+      }
+    };
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) close();
+    });
+
+    modal.querySelectorAll("button[data-action]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const action = button.dataset.action;
+        if (action === "cancel") {
+          close();
+          return;
+        }
+
+        close();
+        if (action === "pdf") {
+          await runPdf();
+          return;
+        }
+        if (action === "excel") {
+          await runExcel();
+          return;
+        }
+        await runPdf();
+        await delay(600);
+        await runExcel();
+      });
+    });
+
+    document.body.appendChild(modal);
+    document.addEventListener("keydown", onKeyDown);
+    modal.querySelector("button[data-action='pdf']")?.focus();
   }
 };
