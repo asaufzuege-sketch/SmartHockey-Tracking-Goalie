@@ -16,10 +16,25 @@ App.playerSelection = {
           this.handleCheckboxChange(index, e.target);
           return;
         }
-        this.debouncedSave();
+        if (e.target.matches(".num-input, .name-input")) {
+          this.persist();
+          this.syncRowClasses();
+        }
       });
       this.container.addEventListener("input", (e) => {
-        if (e.target.matches(".num-input, .name-input")) this.debouncedSave();
+        if (e.target.matches(".num-input, .name-input")) {
+          this.debouncedPersist();
+          this.syncRowClasses();
+        }
+      });
+      this.container.addEventListener("focusout", (e) => {
+        if (!e.target.matches(".num-input, .name-input")) return;
+        window.setTimeout(() => {
+          if (!this.hasFocusedListInput()) {
+            this.persist();
+            this.render();
+          }
+        }, 0);
       });
       this.render();
       this.syncSelectionFromRoster();
@@ -113,27 +128,75 @@ App.playerSelection = {
     return App.helpers.getStoredActiveGoalieName();
   },
 
+  captureFocusedInputState() {
+    if (!this.container) return null;
+    const activeElement = document.activeElement;
+    if (!activeElement || !this.container.contains(activeElement) || !activeElement.matches(".num-input, .name-input")) {
+      return null;
+    }
+
+    const row = activeElement.closest("li.goalie-slot");
+    const index = Number(row?.dataset.index);
+    if (Number.isNaN(index)) return null;
+
+    return {
+      index,
+      field: activeElement.dataset.field || (activeElement.classList.contains("name-input") ? "name" : "number"),
+      selectionStart: typeof activeElement.selectionStart === "number" ? activeElement.selectionStart : null,
+      selectionEnd: typeof activeElement.selectionEnd === "number" ? activeElement.selectionEnd : null
+    };
+  },
+
+  restoreFocusedInputState(focusState) {
+    if (!focusState || !this.container) return;
+
+    window.requestAnimationFrame(() => {
+      const selector = `li.goalie-slot[data-index="${focusState.index}"] [data-field="${focusState.field}"]`;
+      const input = this.container.querySelector(selector);
+      if (!input) return;
+      input.focus({ preventScroll: true });
+      if (focusState.selectionStart !== null && typeof input.setSelectionRange === "function") {
+        try {
+          input.setSelectionRange(focusState.selectionStart, focusState.selectionEnd ?? focusState.selectionStart);
+        } catch (e) {
+          // Ignore selection restore failures on unsupported input types.
+        }
+      }
+    });
+  },
+
+  hasFocusedListInput() {
+    if (!this.container) return false;
+    const activeElement = document.activeElement;
+    return !!activeElement
+      && this.container.contains(activeElement)
+      && activeElement.matches(".num-input, .name-input");
+  },
+
   render() {
     if (!this.container) return;
 
+    const focusState = this.captureFocusedInputState();
     const players = this.normalizePlayers(this.getPlayers());
 
     this.container.innerHTML = players.map((player, index) => {
       return `
-        <li class="goalie-slot" data-index="${index}">
+        <li class="goalie-slot${player.active ? ' active-goalie-slot' : ''}" data-index="${index}">
           <input type="checkbox" ${player.active ? 'checked' : ''} class="player-checkbox" aria-label="Select goalie ${index + 1}">
-          <input type="text" class="num-input" placeholder="Nr." value="${App.helpers.escapeHtml(player.number)}" data-field="number">
-          <input type="text" class="name-input" placeholder="Enter goalie name" value="${App.helpers.escapeHtml(player.name)}" data-field="name">
+          <input type="text" class="num-input" placeholder="Nr." value="${App.helpers.escapeHtml(player.number)}" data-field="number" inputmode="numeric">
+          <input type="text" class="name-input" placeholder="Enter goalie name" value="${App.helpers.escapeHtml(player.name)}" data-field="name" autocomplete="off" autocapitalize="words" enterkeyhint="next">
           <div class="pos-fixed position-box">G</div>
         </li>
       `;
     }).join("");
     this.updateGameDataButton(players);
+    this.syncRowClasses(players);
+    this.restoreFocusedInputState(focusState);
   },
 
-  debouncedSave() {
+  debouncedPersist() {
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
-    this.saveTimeout = setTimeout(() => this.saveCurrentState(), 250);
+    this.saveTimeout = setTimeout(() => this.persist(), 250);
   },
 
   syncSelectionFromRoster() {
@@ -143,10 +206,15 @@ App.playerSelection = {
     App.storage.saveSelectedPlayers();
     App.helpers.setStoredActiveGoalieName(selectedGoalies[0]?.name || "");
     this.updateGameDataButton(players);
+    this.syncRowClasses(players);
   },
 
-  saveCurrentState(preferredActiveIndex = null) {
+  persist(preferredActiveIndex = null) {
     if (!this.container) return;
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
 
     const players = this.normalizePlayers(this.getPlayersFromDOM(), preferredActiveIndex);
 
@@ -166,7 +234,17 @@ App.playerSelection = {
     App.seasonMap?.syncSelectedGoalieToActive?.();
     App.seasonMap?.render?.();
     this.updateGameDataButton(players);
-    this.render();
+    this.syncRowClasses(players);
+  },
+
+  syncRowClasses(players = null) {
+    if (!this.container) return;
+    const normalizedPlayers = players || this.normalizePlayers(this.getPlayersFromDOM());
+    Array.from(this.container.querySelectorAll("li.goalie-slot")).forEach((row, index) => {
+      const isActive = !!normalizedPlayers[index]?.active;
+      row.classList.toggle("active-goalie-slot", isActive);
+    });
+    this.updateGameDataButton(normalizedPlayers);
   },
 
   handleCheckboxChange(index, checkbox) {
@@ -192,7 +270,8 @@ App.playerSelection = {
             this.render();
           },
           afterExport: () => {
-            this.saveCurrentState(index);
+            this.persist(index);
+            this.render();
             App.showPage?.("selection");
           }
         });
@@ -204,7 +283,8 @@ App.playerSelection = {
       );
       if (shouldDiscard) {
         App.goalMap?.reset?.(true);
-        this.saveCurrentState(index);
+        this.persist(index);
+        this.render();
         return;
       }
 
@@ -212,11 +292,13 @@ App.playerSelection = {
       return;
     }
 
-    this.saveCurrentState(index);
+    this.persist(index);
+    this.render();
   },
 
   handleConfirm() {
-    this.saveCurrentState();
+    this.persist();
+    this.render();
     if (!App.data.selectedPlayers.length) {
       alert("Select one active goalie before opening Game Center.");
       return;

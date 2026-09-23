@@ -74,13 +74,30 @@ App.goalMap = {
       const img = box.querySelector("img");
       if (!img) return;
       box.style.position = "relative";
+      box.addEventListener("contextmenu", (event) => event.preventDefault());
 
+      const supportsPointerEvents = typeof window.PointerEvent === "function";
+      const moveThreshold = 10;
       let pressTimer = null;
-      let longPressTriggered = false;
-      let startEvent = null;
+      let gesture = null;
 
-      const getPosFromEvent = (event) => {
-        const point = event.changedTouches?.[0] || event.touches?.[0] || event;
+      const clearPressTimer = () => {
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = null;
+      };
+
+      const getPointFromEvent = (event, pointerId = null) => {
+        if (typeof pointerId === "number" && (event.changedTouches || event.touches)) {
+          const touches = [...(event.changedTouches || []), ...(event.touches || [])];
+          const matchingTouch = touches.find(touch => touch.identifier === pointerId);
+          if (matchingTouch) return matchingTouch;
+        }
+        return event.changedTouches?.[0] || event.touches?.[0] || event;
+      };
+
+      const getPosFromEvent = (event, pointerId = null) => {
+        const point = getPointFromEvent(event, pointerId);
+        if (!point) return null;
         return App.markerHandler.getImagePercentFromClientPoint(
           box,
           img,
@@ -89,9 +106,16 @@ App.goalMap = {
         );
       };
 
-      const clearPress = () => {
-        if (pressTimer) clearTimeout(pressTimer);
-        pressTimer = null;
+      const cancelGesture = () => {
+        clearPressTimer();
+        if (gesture && box.hasPointerCapture?.(gesture.pointerId)) {
+          try {
+            box.releasePointerCapture(gesture.pointerId);
+          } catch (e) {
+            // Ignore release failures for non-captured pointers.
+          }
+        }
+        gesture = null;
       };
 
       const placeMarker = (event, isGoal) => {
@@ -101,7 +125,7 @@ App.goalMap = {
           return;
         }
 
-        const pos = getPosFromEvent(event);
+        const pos = getPosFromEvent(event, gesture?.pointerId ?? null);
         if (!pos) return;
 
         const dot = App.markerHandler.createMarkerPercent(
@@ -119,34 +143,105 @@ App.goalMap = {
         this.saveMarkers();
       };
 
-      const handleStart = (event) => {
-        if (event.target.closest(".marker-dot")) return;
-        longPressTriggered = false;
-        startEvent = event;
-        clearPress();
+      const scheduleLongPress = () => {
+        clearPressTimer();
         pressTimer = setTimeout(() => {
-          longPressTriggered = true;
-          placeMarker(startEvent, true);
+          if (!gesture || gesture.longPressTriggered || !gesture.allowLongPress) return;
+          gesture.longPressTriggered = true;
+          placeMarker(gesture.startEvent, true);
+          navigator.vibrate?.(20);
         }, this.longPressMs);
       };
 
-      const handleEnd = (event) => {
-        if (event.target.closest(".marker-dot")) {
-          clearPress();
-          return;
+      const startGesture = (event, pointerId, options = {}) => {
+        if (gesture || event.target.closest(".marker-dot")) return;
+        const point = getPointFromEvent(event, pointerId);
+        if (!point) return;
+
+        gesture = {
+          pointerId,
+          startX: point.clientX,
+          startY: point.clientY,
+          startEvent: event,
+          longPressTriggered: false,
+          allowLongPress: options.allowLongPress !== false
+        };
+        if (gesture.allowLongPress) {
+          scheduleLongPress();
+        } else {
+          clearPressTimer();
         }
-        clearPress();
-        if (!longPressTriggered) {
+      };
+
+      const updateGesture = (event, pointerId) => {
+        if (!gesture || gesture.pointerId !== pointerId) return;
+        const point = getPointFromEvent(event, pointerId);
+        if (!point) return;
+        const moved = Math.hypot(point.clientX - gesture.startX, point.clientY - gesture.startY);
+        if (moved > moveThreshold) {
+          cancelGesture();
+        }
+      };
+
+      const finishGesture = (event, pointerId) => {
+        if (!gesture || gesture.pointerId !== pointerId) return;
+        const completedGesture = gesture;
+        clearPressTimer();
+        if (box.hasPointerCapture?.(pointerId)) {
+          try {
+            box.releasePointerCapture(pointerId);
+          } catch (e) {
+            // Ignore release failures for non-captured pointers.
+          }
+        }
+        gesture = null;
+        if (!completedGesture.longPressTriggered) {
           placeMarker(event, false);
         }
       };
 
-      box.addEventListener("mousedown", handleStart);
-      box.addEventListener("touchstart", handleStart, { passive: true });
-      box.addEventListener("mouseup", handleEnd);
-      box.addEventListener("touchend", handleEnd, { passive: true });
-      box.addEventListener("mouseleave", clearPress);
-      box.addEventListener("touchcancel", clearPress, { passive: true });
+      if (supportsPointerEvents) {
+        box.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          startGesture(event, event.pointerId, { allowLongPress: event.pointerType !== "mouse" });
+          if (event.pointerType !== "mouse") {
+            box.setPointerCapture?.(event.pointerId);
+          }
+        });
+        box.addEventListener("pointermove", (event) => {
+          updateGesture(event, event.pointerId);
+        });
+        box.addEventListener("pointerup", (event) => {
+          finishGesture(event, event.pointerId);
+        });
+        box.addEventListener("pointercancel", (event) => {
+          if (gesture?.pointerId === event.pointerId) cancelGesture();
+        });
+        box.addEventListener("pointerleave", (event) => {
+          if (event.pointerType === "mouse" && gesture?.pointerId === event.pointerId) {
+            cancelGesture();
+          }
+        });
+      } else {
+        box.addEventListener("touchstart", (event) => {
+          const touch = event.changedTouches?.[0] || event.touches?.[0];
+          if (!touch) return;
+          startGesture(event, touch.identifier);
+        }, { passive: true });
+        box.addEventListener("touchmove", (event) => {
+          if (!gesture) return;
+          updateGesture(event, gesture.pointerId);
+        }, { passive: true });
+        box.addEventListener("touchend", (event) => {
+          if (!gesture) return;
+          finishGesture(event, gesture.pointerId);
+        }, { passive: true });
+        box.addEventListener("touchcancel", (event) => {
+          if (!gesture) return;
+          const point = getPointFromEvent(event, gesture.pointerId);
+          if (point) cancelGesture();
+        }, { passive: true });
+      }
     });
   },
 
@@ -271,12 +366,11 @@ App.goalMap = {
   initTimeTracking() {
     if (!this.timeTrackingBox || this.timeTrackingBox.dataset.initialized === "true") return;
     this.timeTrackingBox.dataset.initialized = "true";
+    this.timeButtonClickTimers = this.timeButtonClickTimers || new WeakMap();
 
     this.timeTrackingBox.querySelectorAll(".period").forEach(periodEl => {
       periodEl.addEventListener("click", () => {
-        this.currentPeriod = periodEl.dataset.period || "p1";
-        this.timeTrackingBox.querySelectorAll(".period").forEach(el => el.classList.remove("active-period"));
-        periodEl.classList.add("active-period");
+        this.setCurrentPeriod(periodEl);
       });
 
       periodEl.querySelectorAll(".time-btn").forEach((button, index) => {
@@ -288,33 +382,70 @@ App.goalMap = {
             return;
           }
 
-          this.currentPeriod = periodEl.dataset.period || "p1";
-          this.timeTrackingBox.querySelectorAll(".period").forEach(el => el.classList.remove("active-period"));
-          periodEl.classList.add("active-period");
+          const pendingTimer = this.timeButtonClickTimers.get(button);
+          this.setCurrentPeriod(periodEl);
 
-          const key = `${this.currentPeriod}_${index}`;
-          const timeData = this.readTimeDataWithPlayers();
-          if (!timeData[key]) timeData[key] = {};
-          timeData[key][goalie.name] = Number(timeData[key][goalie.name] || 0) + 1;
-          AppStorage.setItem(`timeDataWithPlayers_${App.helpers.getCurrentTeamId()}`, JSON.stringify(timeData));
-          this.renderTimeTracking();
+          if (pendingTimer) {
+            clearTimeout(pendingTimer);
+            this.timeButtonClickTimers.delete(button);
+            this.adjustTimeTrackingValue(periodEl, index, goalie.name, -1);
+            return;
+          }
+
+          const timerId = setTimeout(() => {
+            this.timeButtonClickTimers.delete(button);
+            this.adjustTimeTrackingValue(periodEl, index, goalie.name, 1);
+          }, 250);
+
+          this.timeButtonClickTimers.set(button, timerId);
+        });
+
+        button.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
         });
 
         button.addEventListener("contextmenu", (event) => {
           event.preventDefault();
+          event.stopPropagation();
+          const pendingTimer = this.timeButtonClickTimers.get(button);
+          if (pendingTimer) {
+            clearTimeout(pendingTimer);
+            this.timeButtonClickTimers.delete(button);
+          }
           const goalie = this.ensureActiveGoalieValid();
           if (!goalie) return;
-          const key = `${periodEl.dataset.period || "p1"}_${index}`;
-          const timeData = this.readTimeDataWithPlayers();
-          if (!timeData[key]) return;
-          timeData[key][goalie.name] = Math.max(0, Number(timeData[key][goalie.name] || 0) - 1);
-          if (timeData[key][goalie.name] === 0) delete timeData[key][goalie.name];
-          if (Object.keys(timeData[key]).length === 0) delete timeData[key];
-          AppStorage.setItem(`timeDataWithPlayers_${App.helpers.getCurrentTeamId()}`, JSON.stringify(timeData));
-          this.renderTimeTracking();
+          this.setCurrentPeriod(periodEl);
+          this.adjustTimeTrackingValue(periodEl, index, goalie.name, -1);
         });
       });
     });
+  },
+
+  setCurrentPeriod(periodEl) {
+    this.currentPeriod = periodEl?.dataset.period || "p1";
+    this.timeTrackingBox?.querySelectorAll(".period").forEach(el => el.classList.remove("active-period"));
+    periodEl?.classList.add("active-period");
+  },
+
+  adjustTimeTrackingValue(periodEl, index, goalieName, delta) {
+    if (!goalieName) return;
+    const period = periodEl?.dataset.period || "p1";
+    const key = `${period}_${index}`;
+    const timeData = this.readTimeDataWithPlayers();
+    const currentValue = Number(timeData[key]?.[goalieName] || 0);
+    const nextValue = Math.max(0, currentValue + delta);
+
+    if (nextValue > 0) {
+      if (!timeData[key]) timeData[key] = {};
+      timeData[key][goalieName] = nextValue;
+    } else if (timeData[key]) {
+      delete timeData[key][goalieName];
+      if (Object.keys(timeData[key]).length === 0) delete timeData[key];
+    }
+
+    AppStorage.setItem(`timeDataWithPlayers_${App.helpers.getCurrentTeamId()}`, JSON.stringify(timeData));
+    this.renderTimeTracking();
   },
 
   readTimeDataWithPlayers() {

@@ -206,14 +206,36 @@ App.markerHandler = {
       dot.dataset.player = playerName;
     }
     
+    dot.dataset.createdAt = String(Date.now());
+
     if (interactive) {
-      dot.addEventListener("click", (ev) => {
+      const stopPlacementStart = (ev) => {
         ev.stopPropagation();
+      };
+      const tryRemoveDot = (ev) => {
+        ev.stopPropagation();
+        if (!dot.isConnected) return;
+        if (Date.now() - Number(dot.dataset.createdAt || 0) < 400) return;
         dot.remove();
-        // Save markers after removal
         if (App.goalMap && typeof App.goalMap.saveMarkers === 'function') {
           App.goalMap.saveMarkers();
         }
+      };
+
+      if (typeof window.PointerEvent === 'function') {
+        dot.addEventListener("pointerdown", stopPlacementStart);
+        dot.addEventListener("pointerup", tryRemoveDot);
+      } else {
+        dot.addEventListener("touchstart", stopPlacementStart, { passive: true });
+        dot.addEventListener("touchend", tryRemoveDot);
+        dot.addEventListener("mousedown", stopPlacementStart);
+        dot.addEventListener("mouseup", tryRemoveDot);
+      }
+
+      dot.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (ev.detail !== 0) return;
+        tryRemoveDot(ev);
       });
     }
     
