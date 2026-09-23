@@ -32,6 +32,22 @@ const AppStorage = {
     localStorage.removeItem(this.legacyPrefix + key);
   },
 
+  removeItemsByUnprefixedPrefix(prefix) {
+    const storagePrefixes = Array.from(new Set([this.prefix || "", this.legacyPrefix || ""]));
+    storagePrefixes.forEach((storagePrefix) => {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const rawKey = localStorage.key(i);
+        if (!rawKey || (storagePrefix && !rawKey.startsWith(storagePrefix))) continue;
+        const unprefixed = storagePrefix ? rawKey.slice(storagePrefix.length) : rawKey;
+        if (unprefixed.startsWith(prefix)) {
+          keysToRemove.push(rawKey);
+        }
+      }
+      keysToRemove.forEach((rawKey) => localStorage.removeItem(rawKey));
+    });
+  },
+
   startAutoBackup() {
     if (this._autoBackupStarted) return;
     this._autoBackupStarted = true;

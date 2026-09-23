@@ -482,34 +482,7 @@ App.goalMap = {
       AppStorage.removeItem(this.getSeasonMapExportHashStorageKey(goalieName));
       return;
     }
-
-    const allNormalizedGoalies = new Set();
-    const collectName = (name) => {
-      const normalizedName = this.normalizeGoalieName(name);
-      if (normalizedName) allNormalizedGoalies.add(normalizedName);
-    };
-    const collectNamesFromBucketData = (bucketData) => {
-      Object.values(bucketData || {}).forEach((goalieCounts) => {
-        if (!goalieCounts || typeof goalieCounts !== "object") return;
-        Object.keys(goalieCounts).forEach(collectName);
-      });
-    };
-    const collectNamesFromMarkerData = (markerData) => {
-      (Array.isArray(markerData) ? markerData : []).forEach((markers) => {
-        (Array.isArray(markers) ? markers : []).forEach((marker) => collectName(marker?.player));
-      });
-    };
-
-    collectNamesFromMarkerData(this.getCurrentMarkersFromDOM());
-    collectNamesFromMarkerData(App.helpers.safeJSONParse(`seasonMapMarkers_${teamId}`, [[], []]) || [[], []]);
-    collectNamesFromBucketData(this.readTimeDataWithPlayers());
-    collectNamesFromBucketData(App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {});
-    (App.helpers.safeJSONParse(`playerSelectionData_${teamId}`, []) || []).forEach(player => collectName(player?.name));
-    Object.keys(App.helpers.safeJSONParse(`goalieSeasonData_${teamId}`, {}) || {}).forEach(collectName);
-
-    allNormalizedGoalies.forEach((goalieKey) => {
-      AppStorage.removeItem(`${baseKey}_${goalieKey}`);
-    });
+    AppStorage.removeItemsByUnprefixedPrefix?.(`${baseKey}_`);
   },
 
   getGoalieScopedMarkers(markersBySurface, goalieName) {
