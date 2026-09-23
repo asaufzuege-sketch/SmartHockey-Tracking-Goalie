@@ -475,7 +475,7 @@ App.goalMap = {
   clearSeasonMapExportHashes(goalieName = "") {
     const teamId = App.helpers.getCurrentTeamId();
     const baseKey = `seasonMapLastExportHash_${teamId}`;
-    const storagePrefixes = [AppStorage.prefix || "", AppStorage.legacyPrefix || ""];
+    const storagePrefixes = Array.from(new Set([AppStorage.prefix || "", AppStorage.legacyPrefix || ""]));
     AppStorage.removeItem(baseKey);
 
     const normalizedGoalie = this.normalizeGoalieName(goalieName);
