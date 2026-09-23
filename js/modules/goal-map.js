@@ -203,6 +203,14 @@ App.goalMap = {
         box.addEventListener("pointercancel", (event) => {
           if (gesture?.pointerId === event.pointerId) cancelGesture();
         });
+        box.addEventListener("pointerleave", (event) => {
+          if (event.pointerType === "mouse" && gesture?.pointerId === event.pointerId) {
+            cancelGesture();
+          }
+        });
+        box.addEventListener("lostpointercapture", (event) => {
+          if (gesture?.pointerId === event.pointerId) cancelGesture();
+        });
       } else {
         const fallbackPointerId = "touch";
         box.addEventListener("touchstart", (event) => {

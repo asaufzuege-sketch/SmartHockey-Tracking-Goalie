@@ -214,6 +214,7 @@ App.markerHandler = {
       };
       const tryRemoveDot = (ev) => {
         ev.stopPropagation();
+        if (!dot.isConnected) return;
         if (Date.now() - Number(dot.dataset.createdAt || 0) < 400) return;
         dot.remove();
         if (App.goalMap && typeof App.goalMap.saveMarkers === 'function') {
