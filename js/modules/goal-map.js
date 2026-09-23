@@ -485,14 +485,16 @@ App.goalMap = {
     }
 
     storagePrefixes.forEach((storagePrefix) => {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
         const rawKey = localStorage.key(i);
         if (!rawKey || (storagePrefix && !rawKey.startsWith(storagePrefix))) continue;
         const unprefixed = storagePrefix ? rawKey.slice(storagePrefix.length) : rawKey;
         if (unprefixed.startsWith(`${baseKey}_`)) {
-          localStorage.removeItem(rawKey);
+          keysToRemove.push(rawKey);
         }
       }
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
     });
   },
 
