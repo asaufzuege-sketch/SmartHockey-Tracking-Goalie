@@ -231,6 +231,8 @@ App.playerSelection = {
     App.goalMap?.filterByGoalies?.(nextActive ? [nextActive] : []);
     App.goalMap?.renderTimeTracking?.();
     App.statsTable?.render?.();
+    App.seasonMap?.syncSelectedGoalieToActive?.();
+    App.seasonMap?.render?.();
     this.updateGameDataButton(players);
     this.syncRowClasses(players);
   },

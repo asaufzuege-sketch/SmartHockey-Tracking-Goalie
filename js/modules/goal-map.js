@@ -101,6 +101,13 @@ App.goalMap = {
 
       const cancelGesture = () => {
         clearPressTimer();
+        if (gesture && box.hasPointerCapture?.(gesture.pointerId)) {
+          try {
+            box.releasePointerCapture(gesture.pointerId);
+          } catch (e) {
+            // Ignore release failures for non-captured pointers.
+          }
+        }
         gesture = null;
       };
 
@@ -168,6 +175,13 @@ App.goalMap = {
         if (!gesture || gesture.pointerId !== pointerId) return;
         const completedGesture = gesture;
         clearPressTimer();
+        if (box.hasPointerCapture?.(pointerId)) {
+          try {
+            box.releasePointerCapture(pointerId);
+          } catch (e) {
+            // Ignore release failures for non-captured pointers.
+          }
+        }
         gesture = null;
         if (!completedGesture.longPressTriggered) {
           placeMarker(event, false);
@@ -178,6 +192,7 @@ App.goalMap = {
         box.addEventListener("pointerdown", (event) => {
           if (event.button !== 0) return;
           startGesture(event, event.pointerId);
+          box.setPointerCapture?.(event.pointerId);
         });
         box.addEventListener("pointermove", (event) => {
           updateGesture(event, event.pointerId);
@@ -186,9 +201,6 @@ App.goalMap = {
           finishGesture(event, event.pointerId);
         });
         box.addEventListener("pointercancel", (event) => {
-          if (gesture?.pointerId === event.pointerId) cancelGesture();
-        });
-        box.addEventListener("pointerleave", (event) => {
           if (gesture?.pointerId === event.pointerId) cancelGesture();
         });
       } else {
