@@ -197,7 +197,9 @@ App.goalMap = {
         box.addEventListener("pointerdown", (event) => {
           if (event.button !== 0) return;
           startGesture(event, event.pointerId, { allowLongPress: event.pointerType !== "mouse" });
-          box.setPointerCapture?.(event.pointerId);
+          if (event.pointerType !== "mouse") {
+            box.setPointerCapture?.(event.pointerId);
+          }
         });
         box.addEventListener("pointermove", (event) => {
           updateGesture(event, event.pointerId);
@@ -212,9 +214,6 @@ App.goalMap = {
           if (event.pointerType === "mouse" && gesture?.pointerId === event.pointerId) {
             cancelGesture();
           }
-        });
-        box.addEventListener("lostpointercapture", (event) => {
-          if (gesture?.pointerId === event.pointerId) cancelGesture();
         });
       } else {
         const fallbackPointerId = "touch";
