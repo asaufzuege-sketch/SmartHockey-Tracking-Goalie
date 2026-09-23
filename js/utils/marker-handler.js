@@ -231,6 +231,11 @@ App.markerHandler = {
         dot.addEventListener("mousedown", stopPlacementStart);
         dot.addEventListener("mouseup", tryRemoveDot);
       }
+
+      dot.addEventListener("click", (ev) => {
+        if (ev.detail !== 0) return;
+        tryRemoveDot(ev);
+      });
     }
     
     container.style.position = container.style.position || "relative";

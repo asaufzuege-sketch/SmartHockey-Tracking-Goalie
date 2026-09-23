@@ -139,14 +139,14 @@ App.goalMap = {
       const scheduleLongPress = () => {
         clearPressTimer();
         pressTimer = setTimeout(() => {
-          if (!gesture || gesture.longPressTriggered) return;
+          if (!gesture || gesture.longPressTriggered || !gesture.allowLongPress) return;
           gesture.longPressTriggered = true;
           placeMarker(gesture.startEvent, true);
           navigator.vibrate?.(20);
         }, this.longPressMs);
       };
 
-      const startGesture = (event, pointerId) => {
+      const startGesture = (event, pointerId, options = {}) => {
         if (event.target.closest(".marker-dot")) return;
         const point = getPointFromEvent(event);
         if (!point) return;
@@ -156,9 +156,14 @@ App.goalMap = {
           startX: point.clientX,
           startY: point.clientY,
           startEvent: event,
-          longPressTriggered: false
+          longPressTriggered: false,
+          allowLongPress: options.allowLongPress !== false
         };
-        scheduleLongPress();
+        if (gesture.allowLongPress) {
+          scheduleLongPress();
+        } else {
+          clearPressTimer();
+        }
       };
 
       const updateGesture = (event, pointerId) => {
@@ -191,7 +196,7 @@ App.goalMap = {
       if (supportsPointerEvents) {
         box.addEventListener("pointerdown", (event) => {
           if (event.button !== 0) return;
-          startGesture(event, event.pointerId);
+          startGesture(event, event.pointerId, { allowLongPress: event.pointerType !== "mouse" });
           box.setPointerCapture?.(event.pointerId);
         });
         box.addEventListener("pointermove", (event) => {
@@ -214,17 +219,14 @@ App.goalMap = {
       } else {
         const fallbackPointerId = "touch";
         box.addEventListener("touchstart", (event) => {
-          event.preventDefault();
           startGesture(event, fallbackPointerId);
-        }, { passive: false });
+        }, { passive: true });
         box.addEventListener("touchmove", (event) => {
-          event.preventDefault();
           updateGesture(event, fallbackPointerId);
-        }, { passive: false });
+        }, { passive: true });
         box.addEventListener("touchend", (event) => {
-          event.preventDefault();
           finishGesture(event, fallbackPointerId);
-        }, { passive: false });
+        }, { passive: true });
         box.addEventListener("touchcancel", () => {
           cancelGesture();
         }, { passive: true });
