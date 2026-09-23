@@ -922,12 +922,15 @@ App.seasonMap = {
     goalImg.alt = 'Season goal';
     goalImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
     goalExportBox.appendChild(goalImg);
-    const { zoneStats, totalGoals } = this.computeGoalZoneStats(selectedGoalie);
+    const { zoneStats } = this.computeGoalZoneStats(selectedGoalie);
+    const totalShotsAllZones = Object.values(zoneStats || {}).reduce((sum, stats) => {
+      return sum + Number(stats?.goals || 0) + Number(stats?.saves || 0);
+    }, 0);
     this.GOAL_ZONE_LABELS.forEach((zone) => {
       const goals = Number(zoneStats?.[zone.key]?.goals || 0);
       const saves = Number(zoneStats?.[zone.key]?.saves || 0);
       const shots = goals + saves;
-      const percent = totalGoals ? Math.round((goals / totalGoals) * 100) : 0;
+      const percent = totalShotsAllZones ? Math.round((shots / totalShotsAllZones) * 100) : 0;
       const savePercentText = shots > 0 ? `SV ${Math.round((saves / shots) * 100)}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
@@ -1038,7 +1041,8 @@ App.seasonMap = {
   },
 
   exportAll() {
-    return this.exportAsPDF().then(() => {
+    return this.exportAsPDF().then((success) => {
+      if (success === false) return false;
       setTimeout(() => {
         if (App.seasonTable?.exportSeasonWorkbook) {
           App.seasonTable.exportSeasonWorkbook();
@@ -1046,6 +1050,7 @@ App.seasonMap = {
         }
         App.seasonTable?.exportCSV?.();
       }, 600);
+      return true;
     });
   },
 
@@ -1074,8 +1079,16 @@ App.seasonMap = {
 
     const seasonMarkers = this.getSeasonMarkers();
     const scopedMarkers = [
-      (seasonMarkers[0] || []).filter(marker => this.normalizeGoalieName(marker?.player || "") !== normalizedActive),
-      (seasonMarkers[1] || []).filter(marker => this.normalizeGoalieName(marker?.player || "") !== normalizedActive)
+      (seasonMarkers[0] || []).filter(marker => {
+        const markerGoalie = this.normalizeGoalieName(marker?.player || "");
+        if (!markerGoalie) return true;
+        return markerGoalie !== normalizedActive;
+      }),
+      (seasonMarkers[1] || []).filter(marker => {
+        const markerGoalie = this.normalizeGoalieName(marker?.player || "");
+        if (!markerGoalie) return true;
+        return markerGoalie !== normalizedActive;
+      })
     ];
 
     const seasonTimeData = this.getSeasonTimeData();
@@ -1096,9 +1109,23 @@ App.seasonMap = {
       flattened[key] = Object.values(goalieCounts || {}).reduce((sum, value) => sum + Number(value || 0), 0);
     });
 
-    AppStorage.setItem(`seasonMapMarkers_${teamId}`, JSON.stringify(scopedMarkers));
-    AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
-    AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
+    if ((scopedMarkers[0]?.length || 0) > 0 || (scopedMarkers[1]?.length || 0) > 0) {
+      AppStorage.setItem(`seasonMapMarkers_${teamId}`, JSON.stringify(scopedMarkers));
+    } else {
+      AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
+    }
+
+    if (Object.keys(seasonTimeData).length > 0) {
+      AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
+    } else {
+      AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
+    }
+
+    if (Object.keys(flattened).length > 0) {
+      AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
+    } else {
+      AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
+    }
     AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
     this.render();
   },

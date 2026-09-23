@@ -283,10 +283,6 @@ App.helpers = {
         if (!pointerActive || event.button !== 0) return;
         pointerActive = false;
         clearTimer();
-        if (!longPressTriggered) {
-          suppressNextClick = true;
-          onClick?.(event);
-        }
       });
       button.addEventListener("mouseleave", () => {
         if (!pointerActive) return;
@@ -366,7 +362,8 @@ App.helpers = {
           await runExcel();
           return;
         }
-        await runPdf();
+        const pdfResult = await runPdf();
+        if (pdfResult === false) return;
         await delay(600);
         await runExcel();
       });

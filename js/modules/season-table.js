@@ -2087,6 +2087,7 @@ setStickyOffsets() {
     const teamId = App.helpers.getCurrentTeamId();
 
     if (allGoalies) {
+      App.data.seasonData = {};
       App.data.goalieSeasonData = {};
       App.data.goalieExportSnapshot = {};
     } else {
@@ -2094,12 +2095,38 @@ setStickyOffsets() {
         const next = {};
         Object.entries(source || {}).forEach(([key, value]) => {
           if (normalize(key) === normalizedActiveGoalie) return;
+          if (!value || typeof value !== "object" || Array.isArray(value)) {
+            next[key] = value;
+            return;
+          }
+
+          const nested = {};
+          let removedNestedEntry = false;
+          Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+            if (normalize(nestedKey) === normalizedActiveGoalie) {
+              removedNestedEntry = true;
+              return;
+            }
+            nested[nestedKey] = nestedValue;
+          });
+
+          if (removedNestedEntry) {
+            if (Object.keys(nested).length > 0) next[key] = nested;
+            return;
+          }
           next[key] = value;
         });
         return next;
       };
+      App.data.seasonData = removeByNormalizedName(App.data.seasonData);
       App.data.goalieSeasonData = removeByNormalizedName(App.data.goalieSeasonData);
       App.data.goalieExportSnapshot = removeByNormalizedName(App.data.goalieExportSnapshot);
+    }
+
+    if (Object.keys(App.data.seasonData || {}).length) {
+      AppStorage.setItem(`seasonData_${teamId}`, JSON.stringify(App.data.seasonData));
+    } else {
+      AppStorage.removeItem(`seasonData_${teamId}`);
     }
 
     if (Object.keys(App.data.goalieSeasonData || {}).length) {
@@ -2114,8 +2141,16 @@ setStickyOffsets() {
       AppStorage.removeItem(`goalieExportSnapshot_${teamId}`);
     }
 
+    if (allGoalies) {
+      AppStorage.removeItem(`seasonMapMarkers_${teamId}`);
+      AppStorage.removeItem(`seasonMapTimeData_${teamId}`);
+      AppStorage.removeItem(`seasonMapTimeDataWithPlayers_${teamId}`);
+      AppStorage.removeItem(`seasonMapLastExportHash_${teamId}`);
+    }
+
     App.seasonMap?.render();
     this.render();
+    alert("Season data deleted.");
   },
   
   // Add click handler for statistics cells

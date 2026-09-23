@@ -25,9 +25,9 @@ App.statsTable = {
         onClick: () => App.goalMap?.reset?.({ allGoalies: false }),
         onLongPress: () => App.goalMap?.reset?.({ allGoalies: true })
       });
-      return;
+    } else {
+      resetBtn?.addEventListener("click", () => App.goalMap?.reset?.({ allGoalies: false }));
     }
-    resetBtn?.addEventListener("click", () => App.goalMap?.reset?.({ allGoalies: false }));
   },
 
   getRows() {

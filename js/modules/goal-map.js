@@ -713,8 +713,10 @@ App.goalMap = {
   },
 
   exportAll() {
-    return this.exportAsPDF().then(() => {
+    return this.exportAsPDF().then((success) => {
+      if (success === false) return false;
       setTimeout(() => this.exportWorkbook(), 600);
+      return true;
     });
   },
 
@@ -746,7 +748,8 @@ App.goalMap = {
     if (!skipConfirm && !confirm(`Reset Game Center data for ${activeGoalieName}?`)) return;
 
     document.querySelectorAll("#statsPage .marker-dot").forEach(dot => {
-      if (this.normalizeGoalieName(dot.dataset.player || "") !== normalizedActiveGoalie) return;
+      const markerGoalie = this.normalizeGoalieName(dot.dataset.player || "");
+      if (markerGoalie !== normalizedActiveGoalie) return;
       dot.remove();
     });
 
@@ -763,7 +766,29 @@ App.goalMap = {
       });
       if (Object.keys(goalieCounts).length === 0) delete timeData[key];
     });
-    AppStorage.setItem(`timeDataWithPlayers_${teamId}`, JSON.stringify(timeData));
+    if (Object.keys(timeData).length > 0) {
+      AppStorage.setItem(`timeDataWithPlayers_${teamId}`, JSON.stringify(timeData));
+    } else {
+      AppStorage.removeItem(`timeDataWithPlayers_${teamId}`);
+    }
+
+    const pruneStoredByGoalie = (storageKey, inMemoryKey) => {
+      const parsed = App.helpers.safeJSONParse(storageKey, {}) || {};
+      const next = {};
+      Object.entries(parsed).forEach(([goalieName, value]) => {
+        const key = this.normalizeGoalieName(goalieName);
+        if (key && key === normalizedActiveGoalie) return;
+        next[goalieName] = value;
+      });
+      App.data[inMemoryKey] = next;
+      if (Object.keys(next).length) {
+        AppStorage.setItem(storageKey, JSON.stringify(next));
+      } else {
+        AppStorage.removeItem(storageKey);
+      }
+    };
+    pruneStoredByGoalie(`goalMapData_${teamId}`, "goalMapData");
+    pruneStoredByGoalie(`rinkCountData_${teamId}`, "rinkCountData");
 
     this.syncGoalMapDataFromMarkers();
     this.renderTimeTracking();
