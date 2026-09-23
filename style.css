@@ -881,6 +881,10 @@ button,
   font-size: 12px;
   cursor: pointer;
   transition: transform 0.1s, background 0.2s;
+  touch-action: manipulation !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Farben bleiben */
@@ -4372,6 +4376,28 @@ body.locked {
 #statsPage .goal-column {
   flex: 1 1 50%;
   min-width: 0;
+}
+
+.field-box,
+.goal-img-box,
+#fieldBox,
+#goalRedBox,
+#fieldBox img,
+#goalRedBox img {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#fieldBox img,
+#goalRedBox img {
+  pointer-events: none;
+}
+
+.active-goalie-slot {
+  box-shadow: 0 0 0 1px rgba(95, 15, 255, 0.75);
 }
 
 #statsPage .goal-column {
