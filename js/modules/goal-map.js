@@ -465,15 +465,79 @@ App.goalMap = {
     });
   },
 
-  hasUnsavedGameData() {
+  getSeasonMapExportHashStorageKey(goalieName) {
     const teamId = App.helpers.getCurrentTeamId();
-    const currentMarkers = this.getCurrentMarkersFromDOM();
-    const currentTimeData = this.readTimeDataWithPlayers();
+    const normalizedGoalie = this.normalizeGoalieName(goalieName);
+    if (!normalizedGoalie) return `seasonMapLastExportHash_${teamId}`;
+    return `seasonMapLastExportHash_${teamId}_${normalizedGoalie}`;
+  },
+
+  clearSeasonMapExportHashes(goalieName = "") {
+    const teamId = App.helpers.getCurrentTeamId();
+    const baseKey = `seasonMapLastExportHash_${teamId}`;
+    const storagePrefixes = [AppStorage.prefix || "", AppStorage.legacyPrefix || ""];
+    AppStorage.removeItem(baseKey);
+
+    const normalizedGoalie = this.normalizeGoalieName(goalieName);
+    if (normalizedGoalie) {
+      AppStorage.removeItem(this.getSeasonMapExportHashStorageKey(goalieName));
+      return;
+    }
+
+    storagePrefixes.forEach((storagePrefix) => {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const rawKey = localStorage.key(i);
+        if (!rawKey || (storagePrefix && !rawKey.startsWith(storagePrefix))) continue;
+        const unprefixed = storagePrefix ? rawKey.slice(storagePrefix.length) : rawKey;
+        if (unprefixed.startsWith(`${baseKey}_`)) {
+          localStorage.removeItem(rawKey);
+        }
+      }
+    });
+  },
+
+  getGoalieScopedMarkers(markersBySurface, goalieName) {
+    const normalizedGoalie = this.normalizeGoalieName(goalieName);
+    return (Array.isArray(markersBySurface) ? markersBySurface : [[], []]).map((markers) => (
+      (Array.isArray(markers) ? markers : []).filter((marker) => {
+        const markerGoalie = this.normalizeGoalieName(marker?.player || "");
+        return !!markerGoalie && markerGoalie === normalizedGoalie;
+      })
+    ));
+  },
+
+  getGoalieScopedTimeData(timeDataWithPlayers, goalieName) {
+    const normalizedGoalie = this.normalizeGoalieName(goalieName);
+    const scoped = {};
+    Object.entries(timeDataWithPlayers || {}).forEach(([key, goalieCounts]) => {
+      if (!goalieCounts || typeof goalieCounts !== "object") return;
+      const matchedGoalieName = Object.keys(goalieCounts).find(
+        name => this.normalizeGoalieName(name) === normalizedGoalie
+      );
+      if (!matchedGoalieName) return;
+      const value = Number(goalieCounts[matchedGoalieName] || 0);
+      if (value <= 0) return;
+      scoped[key] = value;
+    });
+    return scoped;
+  },
+
+  hasUnsavedGameData(goalieName = this.getActiveGoalie()?.name || App.helpers.getStoredActiveGoalieName() || "") {
+    const teamId = App.helpers.getCurrentTeamId();
+    const normalizedGoalie = this.normalizeGoalieName(goalieName);
+    if (!normalizedGoalie) return false;
+
+    const currentMarkers = this.getGoalieScopedMarkers(this.getCurrentMarkersFromDOM(), goalieName);
+    const currentTimeData = this.getGoalieScopedTimeData(this.readTimeDataWithPlayers(), goalieName);
     const hasMarkers = currentMarkers.some(markers => Array.isArray(markers) && markers.length > 0);
-    const hasTimeData = Object.keys(currentTimeData || {}).length > 0;
+    const hasTimeData = Object.keys(currentTimeData).length > 0;
     if (!hasMarkers && !hasTimeData) return false;
+
     const exportHash = JSON.stringify({ currentMarkers, currentTimeData });
-    return exportHash !== AppStorage.getItem(`seasonMapLastExportHash_${teamId}`);
+    const perGoalieKey = this.getSeasonMapExportHashStorageKey(goalieName);
+    const legacyKey = `seasonMapLastExportHash_${teamId}`;
+    const lastExportHash = AppStorage.getItem(perGoalieKey) ?? AppStorage.getItem(legacyKey);
+    return exportHash !== lastExportHash;
   },
 
   readTimeTrackingFromBox() {
@@ -488,10 +552,16 @@ App.goalMap = {
 
   syncCurrentGameToSeasonMap() {
     const teamId = App.helpers.getCurrentTeamId();
-    const currentMarkers = this.getCurrentMarkersFromDOM();
-    const currentTimeData = this.readTimeDataWithPlayers();
+    const activeGoalieName = this.getActiveGoalie()?.name || App.helpers.getStoredActiveGoalieName() || "";
+    const normalizedGoalie = this.normalizeGoalieName(activeGoalieName);
+    if (!normalizedGoalie) return;
+
+    const currentMarkers = this.getGoalieScopedMarkers(this.getCurrentMarkersFromDOM(), activeGoalieName);
+    const currentTimeData = this.getGoalieScopedTimeData(this.readTimeDataWithPlayers(), activeGoalieName);
     const exportHash = JSON.stringify({ currentMarkers, currentTimeData });
-    const lastExportHash = AppStorage.getItem(`seasonMapLastExportHash_${teamId}`);
+    const perGoalieKey = this.getSeasonMapExportHashStorageKey(activeGoalieName);
+    const legacyKey = `seasonMapLastExportHash_${teamId}`;
+    const lastExportHash = AppStorage.getItem(perGoalieKey) ?? AppStorage.getItem(legacyKey);
     if (exportHash === lastExportHash) return;
 
     let seasonMarkers = [[], []];
@@ -507,11 +577,12 @@ App.goalMap = {
     });
 
     const seasonTimeData = App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {};
-    Object.entries(currentTimeData).forEach(([key, goalieCounts]) => {
+    Object.entries(currentTimeData).forEach(([key, count]) => {
       if (!seasonTimeData[key]) seasonTimeData[key] = {};
-      Object.entries(goalieCounts).forEach(([goalieName, value]) => {
-        seasonTimeData[key][goalieName] = Number(seasonTimeData[key][goalieName] || 0) + Number(value || 0);
-      });
+      const targetGoalieName = Object.keys(seasonTimeData[key]).find(
+        name => this.normalizeGoalieName(name) === normalizedGoalie
+      ) || activeGoalieName;
+      seasonTimeData[key][targetGoalieName] = Number(seasonTimeData[key][targetGoalieName] || 0) + Number(count || 0);
     });
 
     const flattened = {};
@@ -522,7 +593,8 @@ App.goalMap = {
     AppStorage.setItem(`seasonMapMarkers_${teamId}`, JSON.stringify(seasonMarkers));
     AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
     AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
-    AppStorage.setItem(`seasonMapLastExportHash_${teamId}`, exportHash);
+    AppStorage.setItem(perGoalieKey, exportHash);
+    AppStorage.setItem(legacyKey, exportHash);
     App.seasonMap?.renderMomentumGraphic?.();
   },
 
@@ -733,6 +805,7 @@ App.goalMap = {
       AppStorage.removeItem(`goalMapData_${teamId}`);
       AppStorage.removeItem(`rinkCountData_${teamId}`);
       AppStorage.removeItem(`timeDataWithPlayers_${teamId}`);
+      this.clearSeasonMapExportHashes();
       this.syncGoalMapDataFromMarkers();
       this.renderTimeTracking();
       App.statsTable?.render?.();
@@ -789,6 +862,7 @@ App.goalMap = {
     };
     pruneStoredByGoalie(`goalMapData_${teamId}`, "goalMapData");
     pruneStoredByGoalie(`rinkCountData_${teamId}`, "rinkCountData");
+    this.clearSeasonMapExportHashes(activeGoalieName);
 
     this.syncGoalMapDataFromMarkers();
     this.renderTimeTracking();

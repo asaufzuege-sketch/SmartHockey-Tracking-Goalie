@@ -255,9 +255,10 @@ App.playerSelection = {
 
     const currentPlayers = this.normalizePlayers(this.getPlayers());
     const currentActiveIndex = currentPlayers.findIndex(player => player.active && player.name);
+    const currentActiveGoalieName = currentActiveIndex >= 0 ? currentPlayers[currentActiveIndex]?.name || "" : "";
     const isSwitchingGoalie = currentActiveIndex !== -1 && currentActiveIndex !== index;
 
-    if (isSwitchingGoalie && App.goalMap?.hasUnsavedGameData?.()) {
+    if (isSwitchingGoalie && currentActiveGoalieName && App.goalMap?.hasUnsavedGameData?.(currentActiveGoalieName)) {
       this.render();
       const shouldExport = confirm(
         "Export or discard current game data?\n\nOK = Export before switching\nCancel = Choose discard or keep the current goalie"
@@ -282,7 +283,7 @@ App.playerSelection = {
         "Discard current game data and switch goalies?\n\nOK = Discard and switch\nCancel = Keep current goalie"
       );
       if (shouldDiscard) {
-        App.goalMap?.reset?.(true);
+        App.goalMap?.reset?.({ skipConfirm: true });
         this.persist(index);
         this.render();
         return;
@@ -312,7 +313,7 @@ App.playerSelection = {
     App.storage.saveSelectedPlayers();
     AppStorage.removeItem(this.getStorageKey());
     App.helpers.setStoredActiveGoalieName("");
-    App.goalMap?.reset?.(true);
+    App.goalMap?.reset?.({ skipConfirm: true, allGoalies: true });
     App.goalMap?.setActiveGoalie?.("");
     this.render();
     App.goalMap?.updateActiveGoalieButton?.();
