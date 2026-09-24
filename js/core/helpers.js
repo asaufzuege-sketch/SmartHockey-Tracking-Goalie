@@ -309,17 +309,17 @@ App.helpers = {
     }
 
     const modal = document.createElement("div");
-    modal.className = "modal";
+    modal.className = "modal download-choice-modal";
     modal.style.display = "flex";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
     modal.innerHTML = `
-      <div class="modal-content" style="max-width:420px;width:92%;text-align:center;">
-        <h3 style="margin-top:0;">Download</h3>
-        <div class="modal-buttons" style="justify-content:center;flex-wrap:wrap;">
-          <button type="button" data-action="pdf" class="confirm-btn">📄 Graphics (PDF)</button>
-          <button type="button" data-action="excel" class="confirm-btn">📊 Statistics (Excel)</button>
-          <button type="button" data-action="both" class="confirm-btn">Both</button>
+      <div class="modal-content download-choice-modal-content">
+        <h3 class="download-choice-title">Download</h3>
+        <div class="modal-buttons download-choice-buttons">
+          <button type="button" data-action="pdf" class="download-choice-btn">📄 Graphics (PDF)</button>
+          <button type="button" data-action="excel" class="download-choice-btn">📊 Statistics (Excel)</button>
+          <button type="button" data-action="both" class="download-choice-btn">Both</button>
           <button type="button" data-action="cancel" class="cancel-btn">Cancel</button>
         </div>
       </div>

@@ -252,47 +252,6 @@ App.playerSelection = {
       this.render();
       return;
     }
-
-    const currentPlayers = this.normalizePlayers(this.getPlayers());
-    const currentActiveIndex = currentPlayers.findIndex(player => player.active && player.name);
-    const currentActiveGoalieName = currentActiveIndex >= 0 ? currentPlayers[currentActiveIndex]?.name || "" : "";
-    const isSwitchingGoalie = currentActiveIndex !== -1 && currentActiveIndex !== index;
-
-    if (isSwitchingGoalie && currentActiveGoalieName && App.goalMap?.hasUnsavedGameData?.(currentActiveGoalieName)) {
-      this.render();
-      const shouldExport = confirm(
-        "Export or discard current game data?\n\nOK = Export before switching\nCancel = Choose discard or keep the current goalie"
-      );
-      if (shouldExport) {
-        App.seasonTable?.exportFromStats?.({
-          skipExportConfirm: true,
-          clearAfterExport: true,
-          onCancel: () => {
-            this.render();
-          },
-          afterExport: () => {
-            this.persist(index);
-            this.render();
-            App.showPage?.("selection");
-          }
-        });
-        return;
-      }
-
-      const shouldDiscard = confirm(
-        "Discard current game data and switch goalies?\n\nOK = Discard and switch\nCancel = Keep current goalie"
-      );
-      if (shouldDiscard) {
-        App.goalMap?.reset?.({ skipConfirm: true });
-        this.persist(index);
-        this.render();
-        return;
-      }
-
-      this.render();
-      return;
-    }
-
     this.persist(index);
     this.render();
   },
