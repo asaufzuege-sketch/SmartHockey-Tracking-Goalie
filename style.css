@@ -315,7 +315,7 @@ h1 {
 }
 
 .season-view-btn.active {
-  background: #266EFF;
+  background: #5F0FFF;
   color: #fff;
 }
 
@@ -330,7 +330,7 @@ h1 {
 }
 
 [data-theme="light"] .season-view-btn.active {
-  background: #266EFF;
+  background: #5F0FFF;
   color: #fff;
 }
 
@@ -526,7 +526,7 @@ h1 {
 
 
 .confirm-btn {
-  background: #266EFF;
+  background: #5F0FFF;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -534,7 +534,7 @@ h1 {
   cursor: pointer;
   font-size: 1.1rem;
   font-weight: 700;
-  transition: background 0.2s;
+  transition: filter 0.2s;
   display: block;
   margin: 20px auto;
   min-width: 200px;
@@ -543,7 +543,7 @@ h1 {
   white-space: nowrap;
   box-sizing: border-box;
 }
-.confirm-btn:hover { background: #1E5AD8; }
+.confirm-btn:hover { filter: brightness(1.08); }
 
 #statsScrollContainer { max-height: none; overflow-y: visible; }
 
@@ -2071,7 +2071,7 @@ button,
 }
 
 .team-btn {
-  background: #266EFF;
+  background: #5F0FFF;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -2084,7 +2084,7 @@ button,
 }
 
 .team-btn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 .team-btn.active-team {
@@ -2323,12 +2323,12 @@ button,
 }
 
 .modal-buttons .save-btn {
-  background: #266EFF;
-  color: white;
+  background: #5F0FFF;
+  color: #fff;
 }
 
 .modal-buttons .save-btn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 .modal-buttons .cancel-btn {
@@ -2341,12 +2341,12 @@ button,
 }
 
 .modal-buttons .confirm-btn {
-  background: #266EFF;
-  color: white;
+  background: #5F0FFF;
+  color: #fff;
 }
 
 .modal-buttons .confirm-btn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 .download-choice-modal .modal-content.download-choice-modal-content {
@@ -3339,12 +3339,12 @@ tr[data-player].dragging {
 }
 
 #addTimeModal #addTimeConfirmBtn {
-  background: #266EFF;
-  color: white;
+  background: #5F0FFF;
+  color: #fff;
 }
 
 #addTimeModal #addTimeConfirmBtn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 #addTimeModal #addTimeCancelBtn {
@@ -3417,13 +3417,13 @@ tr[data-player].dragging {
 
 #saveTeamNameBtn,
 #teamEditModal .confirm-btn {
-  background: #266EFF !important;
+  background: #5F0FFF !important;
   color: #fff !important;
 }
 
 #saveTeamNameBtn:hover,
 #teamEditModal .confirm-btn:hover {
-  background: #1E5AD8 !important;
+  filter: brightness(1.08);
 }
 
 #cancelTeamEditBtn,
@@ -3688,7 +3688,7 @@ h3.info-title {
   display: block;
   margin: 2rem auto 0;
   padding: 0.75rem 2rem;
-  background: #266EFF;
+  background: #5F0FFF;
   color: white;
   border: none;
   border-radius: 8px;
@@ -3698,9 +3698,9 @@ h3.info-title {
 }
 
 #infoCloseBtn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(38, 110, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(95, 15, 255, 0.4);
 }
 
 /* Language Selector Styles */
@@ -3727,7 +3727,7 @@ h3.info-title {
 /* Close button styles for info modals */
 .info-close-btn,
 .page-info-close-btn {
-  background: #266EFF;
+  background: #5F0FFF;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -3743,7 +3743,7 @@ h3.info-title {
 
 .info-close-btn:hover,
 .page-info-close-btn:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 /* Tip styling in main info */
@@ -4115,12 +4115,12 @@ h3.info-title {
 }
 
 #goalValueExportConfirm {
-  background: #266EFF;
+  background: #5F0FFF;
   color: #fff;
 }
 
 #goalValueExportConfirm:hover {
-  background: #1E5AD8;
+  filter: brightness(1.08);
 }
 
 #goalValueExportCancel {
