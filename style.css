@@ -543,7 +543,7 @@ h1 {
   white-space: nowrap;
   box-sizing: border-box;
 }
-.confirm-btn:hover { filter: brightness(1.08); }
+.confirm-btn:hover { background: #6710FF; }
 
 #statsScrollContainer { max-height: none; overflow-y: visible; }
 
@@ -2084,7 +2084,7 @@ button,
 }
 
 .team-btn:hover {
-  filter: brightness(1.08);
+  background: #6710FF;
 }
 
 .team-btn.active-team {
@@ -3344,7 +3344,7 @@ tr[data-player].dragging {
 }
 
 #addTimeModal #addTimeConfirmBtn:hover {
-  filter: brightness(1.08);
+  background: #6710FF;
 }
 
 #addTimeModal #addTimeCancelBtn {
@@ -3423,7 +3423,7 @@ tr[data-player].dragging {
 
 #saveTeamNameBtn:hover,
 #teamEditModal .confirm-btn:hover {
-  filter: brightness(1.08) !important;
+  background: #6710FF !important;
 }
 
 #cancelTeamEditBtn,
@@ -3698,7 +3698,7 @@ h3.info-title {
 }
 
 #infoCloseBtn:hover {
-  filter: brightness(1.08);
+  background: #6710FF;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(95, 15, 255, 0.4);
 }
@@ -3743,7 +3743,7 @@ h3.info-title {
 
 .info-close-btn:hover,
 .page-info-close-btn:hover {
-  filter: brightness(1.08);
+  background: #6710FF;
 }
 
 /* Tip styling in main info */
@@ -4120,7 +4120,7 @@ h3.info-title {
 }
 
 #goalValueExportConfirm:hover {
-  filter: brightness(1.08);
+  background: #6710FF;
 }
 
 #goalValueExportCancel {
