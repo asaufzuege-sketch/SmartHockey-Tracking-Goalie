@@ -3423,7 +3423,7 @@ tr[data-player].dragging {
 
 #saveTeamNameBtn:hover,
 #teamEditModal .confirm-btn:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.08) !important;
 }
 
 #cancelTeamEditBtn,
