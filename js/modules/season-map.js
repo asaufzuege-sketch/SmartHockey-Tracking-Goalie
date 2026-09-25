@@ -1,3 +1,8 @@
+// Tunable goal-zone geometry in image-relative percentages; shared by screen, PDF, and XLSX.
+const SPLIT_Y = 60;
+const DIAG_BOTTOM_LEFT_X = 30;
+const DIAG_BOTTOM_RIGHT_X = 70;
+
 App.seasonMap = {
   selectedGoalie: "",
   comparisonGoalies: [],
@@ -28,17 +33,12 @@ App.seasonMap = {
   HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
   HEATMAP_MAX_DPR: 3,
   GOAL_ZONE_LABELS: [
-    { key: "tl", anchorX: 25, anchorY: 22 },
-    { key: "tr", anchorX: 70, anchorY: 27 },
-    { key: "bl", anchorX: 16, anchorY: 75 },
-    { key: "bm", anchorX: 50, anchorY: 75 },
-    { key: "br", anchorX: 84, anchorY: 75 }
+    { key: "tl", anchorX: 25, anchorY: 30 },
+    { key: "tr", anchorX: 75, anchorY: 30 },
+    { key: "bl", anchorX: 14, anchorY: 78 },
+    { key: "bm", anchorX: 50, anchorY: 80 },
+    { key: "br", anchorX: 86, anchorY: 78 }
   ],
-  GOAL_FRAME_LEFT_PCT: 8,
-  GOAL_FRAME_RIGHT_PCT: 92,
-  GOAL_FRAME_TOP_PCT: 15,
-  GOAL_FRAME_BOTTOM_PCT: 86,
-  GOAL_FRAME_TOP_ROW_SPLIT_PCT: 50,
 
   init() {
     this.loadPersistedFilters();
@@ -716,26 +716,20 @@ App.seasonMap = {
     fieldBox.querySelector(".field-header")?.remove();
   },
 
-  getGoalAreaZoneKey(xPctImage, yPctImage) {
+  getGoalZoneForPoint(xPctImage, yPctImage) {
     const clampedX = this.clampPercent(xPctImage);
     const clampedY = this.clampPercent(yPctImage);
     if (!Number.isFinite(clampedX) || !Number.isFinite(clampedY)) return null;
-    const frameLeft = this.GOAL_FRAME_LEFT_PCT;
-    const frameRight = this.GOAL_FRAME_RIGHT_PCT;
-    const frameTop = this.GOAL_FRAME_TOP_PCT;
-    const frameBottom = this.GOAL_FRAME_BOTTOM_PCT;
-    const frameWidth = frameRight - frameLeft;
-    const frameHeight = frameBottom - frameTop;
-    if (!frameWidth || !frameHeight) return null;
-    const normalizedX = ((Math.min(frameRight, Math.max(frameLeft, clampedX)) - frameLeft) / frameWidth) * 100;
-    const normalizedY = ((Math.min(frameBottom, Math.max(frameTop, clampedY)) - frameTop) / frameHeight) * 100;
-
-    if (normalizedY < this.GOAL_FRAME_TOP_ROW_SPLIT_PCT) {
-      return normalizedX < 50 ? "tl" : "tr";
+    if (clampedY < SPLIT_Y) {
+      return clampedX < 50 ? "tl" : "tr";
     }
-    if (normalizedX < 33.3333) return "bl";
-    if (normalizedX < 66.6667) return "bm";
-    return "br";
+
+    const t = (clampedY - SPLIT_Y) / (100 - SPLIT_Y);
+    const leftBound = 50 + (DIAG_BOTTOM_LEFT_X - 50) * t;
+    const rightBound = 50 + (DIAG_BOTTOM_RIGHT_X - 50) * t;
+    if (clampedX < leftBound) return "bl";
+    if (clampedX > rightBound) return "br";
+    return "bm";
   },
 
   computeGoalZoneStats(goalieName) {
@@ -752,7 +746,7 @@ App.seasonMap = {
     const goalMarkers = this.getFilteredSeasonGoalMarkers(goalieName);
     goalMarkers.forEach((marker) => {
       const markerType = this.resolveMarkerType(marker?.markerType, marker?.color);
-      const zoneKey = this.getGoalAreaZoneKey(marker?.xPct, marker?.yPct);
+      const zoneKey = this.getGoalZoneForPoint(marker?.xPct, marker?.yPct);
       if (!zoneKey || !zoneStats[zoneKey]) return;
       if (markerType === "goal") {
         zoneStats[zoneKey].goals += 1;
