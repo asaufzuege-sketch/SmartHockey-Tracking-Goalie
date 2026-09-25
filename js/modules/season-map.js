@@ -33,11 +33,11 @@ App.seasonMap = {
   HEATMAP_GRADIENT_MIDPOINT_OPACITY: 0.6,
   HEATMAP_MAX_DPR: 3,
   GOAL_ZONE_LABELS: [
-    { key: "tl", anchorX: 25, anchorY: 30 },
-    { key: "tr", anchorX: 75, anchorY: 30 },
-    { key: "bl", anchorX: 14, anchorY: 78 },
-    { key: "bm", anchorX: 50, anchorY: 80 },
-    { key: "br", anchorX: 86, anchorY: 78 }
+    { key: "tl", anchorX: 22, anchorY: 22 },
+    { key: "tr", anchorX: 78, anchorY: 12 },
+    { key: "bl", anchorX: 12, anchorY: 72 },
+    { key: "bm", anchorX: 50, anchorY: 70 },
+    { key: "br", anchorX: 88, anchorY: 66 }
   ],
 
   init() {
@@ -987,6 +987,8 @@ App.seasonMap = {
     const goalHeight = Math.round(goalWidth * 0.62);
 
     const exportContainer = document.createElement('div');
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    exportContainer.setAttribute('data-theme', currentTheme);
     exportContainer.style.cssText = `position:absolute;left:-9999px;top:0;width:${EXPORT_WIDTH}px;background:#ffffff;padding:${PADDING}px;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;`;
 
     const header = document.createElement('div');
