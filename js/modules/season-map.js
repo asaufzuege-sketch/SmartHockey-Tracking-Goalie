@@ -145,15 +145,17 @@ App.seasonMap = {
     try {
       const raw = JSON.parse(AppStorage.getItem(`seasonMapMarkers_${App.helpers.getCurrentTeamId()}`) || "[[],[]]");
       if (Array.isArray(raw) && raw.length >= 3) {
-        const knownGoalies = new Set([
-          ...Object.keys(App.data.goalieSeasonData || {}),
-          ...this.getLegacyGoalieNamesFromTimeData()
-        ]);
-        const legacyGoalMarkers = [
-          ...(raw[2] || []),
-          ...((raw[1] || []).filter(marker => !marker.player || knownGoalies.size === 0 || knownGoalies.has(marker.player)))
-        ];
-        return [raw[0] || [], legacyGoalMarkers];
+        // Legacy 3-array format stores goal-image markers in index 2.
+        // Keep a boxId-based fallback so mixed historical payloads still classify correctly.
+        const fieldMarkers = [...(Array.isArray(raw[0]) ? raw[0] : [])];
+        const goalMarkers = [...(Array.isArray(raw[2]) ? raw[2] : [])];
+        (Array.isArray(raw[1]) ? raw[1] : []).forEach((marker) => {
+          const boxId = String(marker?.boxId || "").toLowerCase();
+          if (boxId.includes("goal")) goalMarkers.push(marker);
+          else if (boxId.includes("field")) fieldMarkers.push(marker);
+          else goalMarkers.push(marker); // Legacy payloads often omit boxId; keep previous goal-box interpretation.
+        });
+        return [fieldMarkers, goalMarkers];
       }
       return Array.isArray(raw) ? [raw[0] || [], raw[1] || []] : [[], []];
     } catch (e) {
@@ -695,7 +697,7 @@ App.seasonMap = {
   },
 
   computeGoalZoneStats(goalieName) {
-    const selectedGoalie = String(goalieName || "").trim().toLowerCase();
+    const selectedGoalie = this.normalizeGoalieName(goalieName);
     const zoneStats = {
       tl: { goals: 0, saves: 0 },
       tr: { goals: 0, saves: 0 },
@@ -707,7 +709,7 @@ App.seasonMap = {
     let totalGoalMarkers = 0;
     const goalMarkers = this.getSeasonMarkers()?.[1] || [];
     goalMarkers.forEach((marker) => {
-      if (selectedGoalie && String(marker?.player || "").trim().toLowerCase() !== selectedGoalie) return;
+      if (selectedGoalie && this.normalizeGoalieName(marker?.player || "") !== selectedGoalie) return;
       const markerType = this.resolveMarkerType(marker?.markerType, marker?.color);
       const xPctImage = Number(marker?.xPct);
       const yPctImage = Number(marker?.yPct);
@@ -723,13 +725,30 @@ App.seasonMap = {
     return { zoneStats, totalGoals, totalGoalMarkers };
   },
 
+  getGoalZoneDisplayStats(goalieName) {
+    const { zoneStats, totalGoals, totalGoalMarkers } = this.computeGoalZoneStats(goalieName);
+    const byZone = {};
+    this.GOAL_ZONE_LABELS.forEach((zone) => {
+      const goals = Number(zoneStats?.[zone.key]?.goals || 0);
+      const saves = Number(zoneStats?.[zone.key]?.saves || 0);
+      const shots = goals + saves;
+      byZone[zone.key] = {
+        goals,
+        saves,
+        shots,
+        goalPercent: totalGoals > 0 ? Math.round((goals / totalGoals) * 100) : null,
+        savePercent: shots > 0 ? Math.round((saves / shots) * 100) : null
+      };
+    });
+    return { byZone, totalGoals, totalGoalMarkers };
+  },
+
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
     if (!goalBox) return;
 
-    const selectedGoalie = String(this.selectedGoalie || "").trim().toLowerCase();
-    if (!selectedGoalie) return;
+    const selectedGoalie = this.selectedGoalie || "";
 
     const goalImg = goalBox.querySelector("img");
     if (!goalImg) return;
@@ -747,7 +766,7 @@ App.seasonMap = {
     }
     this.pendingGoalAreaImage = null;
 
-    const { zoneStats, totalGoals, totalGoalMarkers } = this.computeGoalZoneStats(selectedGoalie);
+    const { byZone, totalGoals, totalGoalMarkers } = this.getGoalZoneDisplayStats(selectedGoalie);
     if (totalGoals !== totalGoalMarkers) {
       console.debug("[SeasonMap] goal-zone-goal-sum-check", {
         selectedGoalie,
@@ -756,11 +775,10 @@ App.seasonMap = {
       });
     }
     this.GOAL_ZONE_LABELS.forEach(zone => {
-      const goals = zoneStats[zone.key]?.goals || 0;
-      const saves = zoneStats[zone.key]?.saves || 0;
-      const shots = goals + saves;
-      const percent = totalGoals ? Math.round((goals / totalGoals) * 100) : 0;
-      const savePercentText = shots > 0 ? `SV ${Math.round((saves / shots) * 100)}%` : "SV –";
+      const zoneStats = byZone[zone.key] || {};
+      const goals = zoneStats.goals || 0;
+      const goalPercentText = Number.isFinite(zoneStats.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
+      const savePercentText = Number.isFinite(zoneStats.savePercent) ? `SV ${zoneStats.savePercent}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
         goalImg,
@@ -775,7 +793,7 @@ App.seasonMap = {
       label.style.top = `${position.yPct}%`;
       const line1 = document.createElement("span");
       line1.className = "goal-area-label-line goal-area-label-line-primary";
-      line1.textContent = `${goals} · ${percent}%`;
+      line1.textContent = `${goals} · ${goalPercentText}`;
       const line2 = document.createElement("span");
       line2.className = "goal-area-label-line goal-area-label-line-secondary";
       line2.textContent = savePercentText;
@@ -922,16 +940,12 @@ App.seasonMap = {
     goalImg.alt = 'Season goal';
     goalImg.style.cssText = 'display:block;width:100%;height:100%;border-radius:8px;';
     goalExportBox.appendChild(goalImg);
-    const { zoneStats } = this.computeGoalZoneStats(selectedGoalie);
-    const totalShotsAllZones = Object.values(zoneStats || {}).reduce((sum, stats) => {
-      return sum + Number(stats?.goals || 0) + Number(stats?.saves || 0);
-    }, 0);
+    const { byZone } = this.getGoalZoneDisplayStats(selectedGoalie);
     this.GOAL_ZONE_LABELS.forEach((zone) => {
-      const goals = Number(zoneStats?.[zone.key]?.goals || 0);
-      const saves = Number(zoneStats?.[zone.key]?.saves || 0);
-      const shots = goals + saves;
-      const percent = totalShotsAllZones ? Math.round((shots / totalShotsAllZones) * 100) : 0;
-      const savePercentText = shots > 0 ? `SV ${Math.round((saves / shots) * 100)}%` : "SV –";
+      const zoneStats = byZone[zone.key] || {};
+      const goals = Number(zoneStats.goals || 0);
+      const goalPercentText = Number.isFinite(zoneStats.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
+      const savePercentText = Number.isFinite(zoneStats.savePercent) ? `SV ${zoneStats.savePercent}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
         goalImgEl,
@@ -946,7 +960,7 @@ App.seasonMap = {
       label.style.top = `${position.yPct}%`;
       const line1 = document.createElement('span');
       line1.className = 'goal-area-label-line goal-area-label-line-primary';
-      line1.textContent = `${goals} · ${percent}%`;
+      line1.textContent = `${goals} · ${goalPercentText}`;
       const line2 = document.createElement('span');
       line2.className = 'goal-area-label-line goal-area-label-line-secondary';
       line2.textContent = savePercentText;
