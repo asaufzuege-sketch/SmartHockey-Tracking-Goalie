@@ -720,6 +720,8 @@ App.seasonMap = {
     const clampedX = this.clampPercent(xPctImage);
     const clampedY = this.clampPercent(yPctImage);
     if (!Number.isFinite(clampedX) || !Number.isFinite(clampedY)) return null;
+    // Goal-image markers are stored as full-image percentages, so the shared zone geometry
+    // is applied directly after clamping rather than remapping into a cropped goal frame.
     if (clampedY < SPLIT_Y) {
       return clampedX < 50 ? "tl" : "tr";
     }
