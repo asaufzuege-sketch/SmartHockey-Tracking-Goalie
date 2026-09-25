@@ -586,13 +586,13 @@ App.goalMap = {
     });
 
     const seasonTimeData = App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {};
-    let appendedTimeCount = 0;
-    Object.entries(currentTimeData).forEach(([key, count]) => {
+    const timeEntries = Object.entries(currentTimeData).filter(([, count]) => Number(count || 0) > 0);
+    const appendedTimeCount = timeEntries.length;
+    timeEntries.forEach(([key, count]) => {
       if (!seasonTimeData[key]) seasonTimeData[key] = {};
       const targetGoalieName = Object.keys(seasonTimeData[key]).find(
         name => this.normalizeGoalieName(name) === normalizedGoalie
       ) || activeGoalieName;
-      if (Number(count || 0) > 0) appendedTimeCount += 1;
       seasonTimeData[key][targetGoalieName] = Number(seasonTimeData[key][targetGoalieName] || 0) + Number(count || 0);
     });
 
