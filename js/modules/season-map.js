@@ -755,7 +755,7 @@ App.seasonMap = {
   createGoalZoneLegend() {
     const legend = document.createElement("div");
     legend.className = "season-goal-zone-legend";
-    legend.setAttribute("aria-hidden", "true");
+    legend.setAttribute("role", "note");
 
     const gaDot = document.createElement("span");
     gaDot.className = "season-goal-zone-legend-dot season-goal-zone-legend-dot-ga";
@@ -773,10 +773,9 @@ App.seasonMap = {
 
   ensureGoalZoneLegend(goalBox) {
     if (!goalBox?.parentElement) return null;
-    let legend = document.getElementById("seasonGoalZoneLegend");
+    let legend = Array.from(goalBox.parentElement.children).find((child) => child.classList?.contains("season-goal-zone-legend"));
     if (!legend) {
       legend = this.createGoalZoneLegend();
-      legend.id = "seasonGoalZoneLegend";
       goalBox.parentElement.insertBefore(legend, goalBox.nextSibling);
     }
     return legend;
