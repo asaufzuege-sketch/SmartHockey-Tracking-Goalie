@@ -755,7 +755,6 @@ App.seasonMap = {
   createGoalZoneLegend() {
     const legend = document.createElement("div");
     legend.className = "season-goal-zone-legend";
-    legend.setAttribute("role", "note");
 
     const gaDot = document.createElement("span");
     gaDot.className = "season-goal-zone-legend-dot season-goal-zone-legend-dot-ga";
@@ -781,6 +780,7 @@ App.seasonMap = {
       legend = this.createGoalZoneLegend();
       goalBox.parentElement.insertBefore(legend, goalBox.nextSibling);
     }
+    legend.setAttribute("role", "note");
     return legend;
   },
 
