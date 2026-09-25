@@ -1,4 +1,4 @@
-const CACHE_VERSION = '3.4.14';
+const CACHE_VERSION = '3.4.15';
 const CACHE_NAME = 'smarthockey-goalie-v' + CACHE_VERSION;
 
 const imageUrlsToCacheIndividually = [
