@@ -147,13 +147,18 @@ App.seasonMap = {
       if (Array.isArray(raw) && raw.length >= 3) {
         // Legacy 3-array format stores goal-image markers in index 2.
         // Keep a boxId-based fallback so mixed historical payloads still classify correctly.
+        const knownGoalies = new Set([
+          ...Object.keys(App.data.goalieSeasonData || {}),
+          ...this.getLegacyGoalieNamesFromTimeData()
+        ]);
         const fieldMarkers = [...(Array.isArray(raw[0]) ? raw[0] : [])];
         const goalMarkers = [...(Array.isArray(raw[2]) ? raw[2] : [])];
         (Array.isArray(raw[1]) ? raw[1] : []).forEach((marker) => {
           const boxId = String(marker?.boxId || "").toLowerCase();
           if (boxId.includes("goal")) goalMarkers.push(marker);
           else if (boxId.includes("field")) fieldMarkers.push(marker);
-          else goalMarkers.push(marker); // Legacy payloads often omit boxId; keep previous goal-box interpretation.
+          else if (!marker?.player || knownGoalies.size === 0 || knownGoalies.has(marker.player)) goalMarkers.push(marker);
+          else fieldMarkers.push(marker);
         });
         return [fieldMarkers, goalMarkers];
       }
