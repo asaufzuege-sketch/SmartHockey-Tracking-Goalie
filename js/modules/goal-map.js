@@ -563,23 +563,10 @@ App.goalMap = {
       seasonMarkers = [[], []];
     }
 
-    const markerSignature = (marker = {}) => JSON.stringify({
-      xPct: Number(marker.xPct || 0),
-      yPct: Number(marker.yPct || 0),
-      color: String(marker.color || ""),
-      player: this.normalizeGoalieName(marker.player || ""),
-      period: String(marker.period || "p1"),
-      markerType: String(marker.markerType || ""),
-      boxId: String(marker.boxId || "")
-    });
     let appendedMarkerCount = 0;
     currentMarkers.forEach((markers, index) => {
       if (!Array.isArray(seasonMarkers[index])) seasonMarkers[index] = [];
-      const existingSignatures = new Set((seasonMarkers[index] || []).map(markerSignature));
       (markers || []).forEach((marker) => {
-        const signature = markerSignature(marker);
-        if (existingSignatures.has(signature)) return;
-        existingSignatures.add(signature);
         seasonMarkers[index].push(marker);
         appendedMarkerCount += 1;
       });

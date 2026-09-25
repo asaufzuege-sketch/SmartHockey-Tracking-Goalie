@@ -1961,14 +1961,14 @@ setStickyOffsets() {
     const zones = ["tl", "tr", "bl", "bm", "br"];
     const zoneSheetData = [["Goalie", "Zone", "Goals", "Saves", "Shots", "Goal-%", "SV%"]];
     goalieRows.forEach((row) => {
-      const zoneResult = App.seasonMap?.computeGoalZoneStats?.(row.name) || { zoneStats: {}, totalGoals: 0 };
-      const totalGoals = Number(zoneResult.totalGoals || 0);
+      const zoneResult = App.seasonMap?.getGoalZoneDisplayStats?.(row.name) || { byZone: {} };
       zones.forEach((zone) => {
-        const goals = Number(zoneResult.zoneStats?.[zone]?.goals || 0);
-        const saves = Number(zoneResult.zoneStats?.[zone]?.saves || 0);
-        const shots = goals + saves;
-        const goalPct = totalGoals > 0 ? `${Math.round((goals / totalGoals) * 100)}%` : "–";
-        const svPct = shots > 0 ? `${Math.round((saves / shots) * 100)}%` : "–";
+        const zoneStats = zoneResult.byZone?.[zone] || {};
+        const goals = Number(zoneStats.goals || 0);
+        const saves = Number(zoneStats.saves || 0);
+        const shots = Number(zoneStats.shots || (goals + saves));
+        const goalPct = Number.isFinite(zoneStats.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
+        const svPct = Number.isFinite(zoneStats.savePercent) ? `${zoneStats.savePercent}%` : "–";
         zoneSheetData.push([row.name, zone, goals, saves, shots, goalPct, svPct]);
       });
     });
