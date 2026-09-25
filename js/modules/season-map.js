@@ -150,14 +150,18 @@ App.seasonMap = {
         const knownGoalies = new Set([
           ...Object.keys(App.data.goalieSeasonData || {}),
           ...this.getLegacyGoalieNamesFromTimeData()
-        ]);
+        ].map(name => this.normalizeGoalieName(name)).filter(Boolean));
         const fieldMarkers = [...(Array.isArray(raw[0]) ? raw[0] : [])];
         const goalMarkers = [...(Array.isArray(raw[2]) ? raw[2] : [])];
         (Array.isArray(raw[1]) ? raw[1] : []).forEach((marker) => {
           const boxId = String(marker?.boxId || "").toLowerCase();
           if (boxId.includes("goal")) goalMarkers.push(marker);
           else if (boxId.includes("field")) fieldMarkers.push(marker);
-          else if (!marker?.player || knownGoalies.size === 0 || knownGoalies.has(marker.player)) goalMarkers.push(marker);
+          else if (
+            !marker?.player
+            || knownGoalies.size === 0
+            || knownGoalies.has(this.normalizeGoalieName(marker.player))
+          ) goalMarkers.push(marker);
           else fieldMarkers.push(marker);
         });
         return [fieldMarkers, goalMarkers];

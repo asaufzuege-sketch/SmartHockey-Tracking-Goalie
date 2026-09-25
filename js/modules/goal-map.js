@@ -611,7 +611,10 @@ App.goalMap = {
       AppStorage.setItem(perGoalieKey, exportHash);
       AppStorage.setItem(legacyKey, exportHash);
       App.seasonMap?.renderMomentumGraphic?.();
+      return;
     }
+    AppStorage.setItem(perGoalieKey, exportHash);
+    AppStorage.setItem(legacyKey, exportHash);
   },
 
   exportGoalMap() {
