@@ -752,9 +752,10 @@ App.seasonMap = {
     return { byZone, totalGoals, totalGoalMarkers };
   },
 
-  createGoalZoneLegend() {
+  createGoalZoneLegend(forScreen = false) {
     const legend = document.createElement("div");
     legend.className = "season-goal-zone-legend";
+    if (forScreen) legend.setAttribute("role", "note");
 
     const gaDot = document.createElement("span");
     gaDot.className = "season-goal-zone-legend-dot season-goal-zone-legend-dot-ga";
@@ -777,10 +778,10 @@ App.seasonMap = {
       legend = null;
     }
     if (!legend) {
-      legend = this.createGoalZoneLegend();
+      legend = this.createGoalZoneLegend(true);
       goalBox.parentElement.insertBefore(legend, goalBox.nextSibling);
     }
-    legend.setAttribute("role", "note");
+    if (!legend.hasAttribute("role")) legend.setAttribute("role", "note");
     return legend;
   },
 
@@ -1051,7 +1052,7 @@ App.seasonMap = {
       goalExportBox.appendChild(markerEl);
     });
     goalColumn.appendChild(goalExportBox);
-    const exportLegend = this.createGoalZoneLegend();
+    const exportLegend = this.createGoalZoneLegend(false);
     goalColumn.appendChild(exportLegend);
 
     row.appendChild(fieldColumn);
