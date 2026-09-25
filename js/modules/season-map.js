@@ -773,7 +773,10 @@ App.seasonMap = {
 
   ensureGoalZoneLegend(goalBox) {
     if (!goalBox?.parentElement) return null;
-    let legend = Array.from(goalBox.parentElement.children).find((child) => child.classList?.contains("season-goal-zone-legend"));
+    let legend = goalBox.nextElementSibling;
+    if (!legend?.classList?.contains("season-goal-zone-legend")) {
+      legend = null;
+    }
     if (!legend) {
       legend = this.createGoalZoneLegend();
       goalBox.parentElement.insertBefore(legend, goalBox.nextSibling);
