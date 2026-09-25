@@ -29,7 +29,7 @@ App.seasonMap = {
   HEATMAP_MAX_DPR: 3,
   GOAL_ZONE_LABELS: [
     { key: "tl", anchorX: 25, anchorY: 22 },
-    { key: "tr", anchorX: 75, anchorY: 22 },
+    { key: "tr", anchorX: 70, anchorY: 27 },
     { key: "bl", anchorX: 16, anchorY: 75 },
     { key: "bm", anchorX: 50, anchorY: 75 },
     { key: "br", anchorX: 84, anchorY: 75 }
@@ -752,10 +752,87 @@ App.seasonMap = {
     return { byZone, totalGoals, totalGoalMarkers };
   },
 
+  createGoalZoneLegend(forScreen = false) {
+    const legend = document.createElement("div");
+    legend.className = "season-goal-zone-legend";
+    if (forScreen) legend.setAttribute("role", "note");
+
+    const gaDot = document.createElement("span");
+    gaDot.className = "season-goal-zone-legend-dot season-goal-zone-legend-dot-ga";
+    gaDot.textContent = "●";
+    legend.appendChild(gaDot);
+    legend.append(" GA = goal against · ");
+
+    const svDot = document.createElement("span");
+    svDot.className = "season-goal-zone-legend-dot season-goal-zone-legend-dot-sv";
+    svDot.textContent = "●";
+    legend.appendChild(svDot);
+    legend.append(" SV = save · % = share of all GA / save % in zone");
+    return legend;
+  },
+
+  ensureGoalZoneLegend(goalBox) {
+    if (!goalBox?.parentElement) return null;
+    let legend = goalBox.nextElementSibling;
+    if (!legend?.classList?.contains("season-goal-zone-legend")) {
+      legend = null;
+    }
+    if (!legend) {
+      legend = this.createGoalZoneLegend(true);
+      goalBox.parentElement.insertBefore(legend, goalBox.nextSibling);
+    }
+    if (!legend.hasAttribute("role")) legend.setAttribute("role", "note");
+    return legend;
+  },
+
+  createGoalAreaBadge(zoneStats) {
+    const goals = Number(zoneStats?.goals || 0);
+    const saves = Number(zoneStats?.saves || 0);
+    const shots = goals + saves;
+    const goalPercentText = Number.isFinite(zoneStats?.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
+    const savePercentText = Number.isFinite(zoneStats?.savePercent) ? `${zoneStats.savePercent}` : "–";
+
+    const label = document.createElement("div");
+    label.className = "goal-area-label";
+    label.setAttribute("aria-hidden", "true");
+    if (goals > 0) label.classList.add("goal-area-label-has-ga");
+    if (shots === 0) {
+      label.classList.add("goal-area-label-empty");
+      label.textContent = "–";
+      return label;
+    }
+
+    const line1 = document.createElement("span");
+    line1.className = "goal-area-label-line goal-area-label-line-primary";
+    const gaValue = document.createElement("span");
+    gaValue.className = "goal-area-label-ga-value";
+    gaValue.textContent = String(goals);
+    line1.appendChild(gaValue);
+    line1.append(` GA · ${goalPercentText}`);
+
+    const line2 = document.createElement("span");
+    line2.className = "goal-area-label-line goal-area-label-line-secondary";
+    const svValue = document.createElement("span");
+    svValue.className = "goal-area-label-sv-value";
+    svValue.textContent = String(saves);
+    line2.appendChild(svValue);
+    line2.append(" SV");
+
+    const line3 = document.createElement("span");
+    line3.className = "goal-area-label-line goal-area-label-line-tertiary";
+    line3.textContent = `SV% ${savePercentText}`;
+
+    label.appendChild(line1);
+    label.appendChild(line2);
+    label.appendChild(line3);
+    return label;
+  },
+
   renderGoalAreaStats() {
     const goalBox = document.getElementById("seasonGoalRedBox");
     goalBox?.querySelectorAll(".goal-area-label").forEach(label => label.remove());
     if (!goalBox) return;
+    this.ensureGoalZoneLegend(goalBox);
 
     const selectedGoalie = this.selectedGoalie || "";
 
@@ -785,9 +862,6 @@ App.seasonMap = {
     }
     this.GOAL_ZONE_LABELS.forEach(zone => {
       const zoneStats = byZone[zone.key] || {};
-      const goals = zoneStats.goals || 0;
-      const goalPercentText = Number.isFinite(zoneStats.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
-      const savePercentText = Number.isFinite(zoneStats.savePercent) ? `SV ${zoneStats.savePercent}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
         goalImg,
@@ -795,19 +869,9 @@ App.seasonMap = {
         zone.anchorY
       );
       if (!position?.valid) return;
-      const label = document.createElement("div");
-      label.className = "goal-area-label";
-      label.setAttribute("aria-hidden", "true");
+      const label = this.createGoalAreaBadge(zoneStats);
       label.style.left = `${position.xPct}%`;
       label.style.top = `${position.yPct}%`;
-      const line1 = document.createElement("span");
-      line1.className = "goal-area-label-line goal-area-label-line-primary";
-      line1.textContent = `${goals} · ${goalPercentText}`;
-      const line2 = document.createElement("span");
-      line2.className = "goal-area-label-line goal-area-label-line-secondary";
-      line2.textContent = savePercentText;
-      label.appendChild(line1);
-      label.appendChild(line2);
       goalBox.appendChild(label);
     });
   },
@@ -943,6 +1007,7 @@ App.seasonMap = {
     const goalColumn = document.createElement('div');
     goalColumn.style.cssText = `flex:0 0 ${goalWidth}px;width:${goalWidth}px;display:flex;flex-direction:column;box-sizing:border-box;`;
     const goalExportBox = document.createElement('div');
+    goalExportBox.className = 'season-goal-export-box';
     goalExportBox.style.cssText = `width:${goalWidth}px;height:${goalHeight}px;position:relative;overflow:hidden;border-radius:10px;background:#fff;`;
     const goalImg = document.createElement('img');
     goalImg.src = goalImgSrc;
@@ -952,9 +1017,6 @@ App.seasonMap = {
     const { byZone } = this.getGoalZoneDisplayStats(selectedGoalie);
     this.GOAL_ZONE_LABELS.forEach((zone) => {
       const zoneStats = byZone[zone.key] || {};
-      const goals = Number(zoneStats.goals || 0);
-      const goalPercentText = Number.isFinite(zoneStats.goalPercent) ? `${zoneStats.goalPercent}%` : "–";
-      const savePercentText = Number.isFinite(zoneStats.savePercent) ? `SV ${zoneStats.savePercent}%` : "SV –";
       const position = App.markerHandler?.getContainerPercentFromImagePercent?.(
         goalBox,
         goalImgEl,
@@ -963,18 +1025,9 @@ App.seasonMap = {
       );
       if (!position?.valid) return;
 
-      const label = document.createElement('div');
-      label.className = 'goal-area-label';
+      const label = this.createGoalAreaBadge(zoneStats);
       label.style.left = `${position.xPct}%`;
       label.style.top = `${position.yPct}%`;
-      const line1 = document.createElement('span');
-      line1.className = 'goal-area-label-line goal-area-label-line-primary';
-      line1.textContent = `${goals} · ${goalPercentText}`;
-      const line2 = document.createElement('span');
-      line2.className = 'goal-area-label-line goal-area-label-line-secondary';
-      line2.textContent = savePercentText;
-      label.appendChild(line1);
-      label.appendChild(line2);
       goalExportBox.appendChild(label);
     });
     goalBox.querySelectorAll('.marker-dot').forEach((dot) => {
@@ -999,6 +1052,8 @@ App.seasonMap = {
       goalExportBox.appendChild(markerEl);
     });
     goalColumn.appendChild(goalExportBox);
+    const exportLegend = this.createGoalZoneLegend(false);
+    goalColumn.appendChild(exportLegend);
 
     row.appendChild(fieldColumn);
     row.appendChild(goalColumn);
