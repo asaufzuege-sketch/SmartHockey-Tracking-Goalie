@@ -587,13 +587,16 @@ App.goalMap = {
 
     const seasonTimeData = App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {};
     const timeEntries = Object.entries(currentTimeData).filter(([, count]) => Number(count || 0) > 0);
-    const appendedTimeCount = timeEntries.length;
+    let appendedTimeCount = 0;
     timeEntries.forEach(([key, count]) => {
       if (!seasonTimeData[key]) seasonTimeData[key] = {};
       const targetGoalieName = Object.keys(seasonTimeData[key]).find(
         name => this.normalizeGoalieName(name) === normalizedGoalie
       ) || activeGoalieName;
-      seasonTimeData[key][targetGoalieName] = Number(seasonTimeData[key][targetGoalieName] || 0) + Number(count || 0);
+      const previousValue = Number(seasonTimeData[key][targetGoalieName] || 0);
+      const nextValue = previousValue + Number(count || 0);
+      seasonTimeData[key][targetGoalieName] = nextValue;
+      if (nextValue > previousValue) appendedTimeCount += 1;
     });
 
     const flattened = {};
