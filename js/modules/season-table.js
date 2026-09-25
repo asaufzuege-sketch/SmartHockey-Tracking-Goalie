@@ -1967,7 +1967,7 @@ setStickyOffsets() {
         const goals = Number(zoneResult.zoneStats?.[zone]?.goals || 0);
         const saves = Number(zoneResult.zoneStats?.[zone]?.saves || 0);
         const shots = goals + saves;
-        const goalPct = totalGoals > 0 ? `${Math.round((goals / totalGoals) * 100)}%` : "0%";
+        const goalPct = totalGoals > 0 ? `${Math.round((goals / totalGoals) * 100)}%` : "–";
         const svPct = shots > 0 ? `${Math.round((saves / shots) * 100)}%` : "–";
         zoneSheetData.push([row.name, zone, goals, saves, shots, goalPct, svPct]);
       });

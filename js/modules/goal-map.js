@@ -547,6 +547,9 @@ App.goalMap = {
 
     const currentMarkers = this.getGoalieScopedMarkers(this.getCurrentMarkersFromDOM(), activeGoalieName);
     const currentTimeData = this.getGoalieScopedTimeData(this.readTimeDataWithPlayers(), activeGoalieName);
+    const hasMarkersToExport = currentMarkers.some(markers => Array.isArray(markers) && markers.length > 0);
+    const hasTimeDataToExport = Object.keys(currentTimeData).length > 0;
+    if (!hasMarkersToExport && !hasTimeDataToExport) return;
     const exportHash = JSON.stringify({ currentMarkers, currentTimeData });
     const perGoalieKey = this.getSeasonMapExportHashStorageKey(activeGoalieName);
     const legacyKey = `seasonMapLastExportHash_${teamId}`;
@@ -560,18 +563,40 @@ App.goalMap = {
       seasonMarkers = [[], []];
     }
 
+    const markerSignature = (marker = {}) => JSON.stringify({
+      xPct: Number(marker.xPct || 0),
+      yPct: Number(marker.yPct || 0),
+      color: String(marker.color || ""),
+      player: this.normalizeGoalieName(marker.player || ""),
+      period: String(marker.period || "p1"),
+      markerType: String(marker.markerType || ""),
+      boxId: String(marker.boxId || "")
+    });
+    let appendedMarkerCount = 0;
     currentMarkers.forEach((markers, index) => {
       if (!Array.isArray(seasonMarkers[index])) seasonMarkers[index] = [];
-      seasonMarkers[index].push(...markers);
+      const existingSignatures = new Set((seasonMarkers[index] || []).map(markerSignature));
+      (markers || []).forEach((marker) => {
+        const signature = markerSignature(marker);
+        if (existingSignatures.has(signature)) return;
+        existingSignatures.add(signature);
+        seasonMarkers[index].push(marker);
+        appendedMarkerCount += 1;
+      });
     });
 
     const seasonTimeData = App.helpers.safeJSONParse(`seasonMapTimeDataWithPlayers_${teamId}`, {}) || {};
-    Object.entries(currentTimeData).forEach(([key, count]) => {
+    const timeEntries = Object.entries(currentTimeData).filter(([, count]) => Number(count || 0) > 0);
+    let appendedTimeCount = 0;
+    timeEntries.forEach(([key, count]) => {
       if (!seasonTimeData[key]) seasonTimeData[key] = {};
       const targetGoalieName = Object.keys(seasonTimeData[key]).find(
         name => this.normalizeGoalieName(name) === normalizedGoalie
       ) || activeGoalieName;
-      seasonTimeData[key][targetGoalieName] = Number(seasonTimeData[key][targetGoalieName] || 0) + Number(count || 0);
+      const previousValue = Number(seasonTimeData[key][targetGoalieName] || 0);
+      const nextValue = previousValue + Number(count || 0);
+      seasonTimeData[key][targetGoalieName] = nextValue;
+      if (nextValue > previousValue) appendedTimeCount += 1;
     });
 
     const flattened = {};
@@ -579,12 +604,17 @@ App.goalMap = {
       flattened[key] = Object.values(goalieCounts).reduce((sum, value) => sum + Number(value || 0), 0);
     });
 
-    AppStorage.setItem(`seasonMapMarkers_${teamId}`, JSON.stringify(seasonMarkers));
-    AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
-    AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
+    if (appendedMarkerCount > 0 || appendedTimeCount > 0) {
+      AppStorage.setItem(`seasonMapMarkers_${teamId}`, JSON.stringify(seasonMarkers));
+      AppStorage.setItem(`seasonMapTimeDataWithPlayers_${teamId}`, JSON.stringify(seasonTimeData));
+      AppStorage.setItem(`seasonMapTimeData_${teamId}`, JSON.stringify(flattened));
+      AppStorage.setItem(perGoalieKey, exportHash);
+      AppStorage.setItem(legacyKey, exportHash);
+      App.seasonMap?.renderMomentumGraphic?.();
+      return;
+    }
     AppStorage.setItem(perGoalieKey, exportHash);
     AppStorage.setItem(legacyKey, exportHash);
-    App.seasonMap?.renderMomentumGraphic?.();
   },
 
   exportGoalMap() {
@@ -809,11 +839,58 @@ App.goalMap = {
     }
     if (!skipConfirm && !confirm(`Reset Game Center data for ${activeGoalieName}?`)) return;
 
+    const markerStorageKey = `goalMapMarkers_${teamId}`;
+    let storedMarkers = [];
+    try {
+      storedMarkers = JSON.parse(AppStorage.getItem(markerStorageKey) || "[]");
+    } catch (e) {
+      storedMarkers = [];
+    }
+
     document.querySelectorAll("#statsPage .marker-dot").forEach(dot => {
       const markerGoalie = this.normalizeGoalieName(dot.dataset.player || "");
       if (markerGoalie !== normalizedActiveGoalie) return;
       dot.remove();
     });
+
+    const filteredStoredMarkers = (Array.isArray(storedMarkers) ? storedMarkers : []).map((boxMarkers) => (
+      (Array.isArray(boxMarkers) ? boxMarkers : []).filter((marker) => {
+        const markerGoalie = this.normalizeGoalieName(marker?.player || "");
+        return markerGoalie !== normalizedActiveGoalie;
+      })
+    ));
+    const filteredDomMarkers = this.getCurrentMarkersFromDOM().map((boxMarkers) => (
+      (Array.isArray(boxMarkers) ? boxMarkers : []).filter((marker) => {
+        const markerGoalie = this.normalizeGoalieName(marker?.player || "");
+        return markerGoalie !== normalizedActiveGoalie;
+      })
+    ));
+    const mergedMarkers = [];
+    const maxLength = Math.max(filteredStoredMarkers.length, filteredDomMarkers.length);
+    for (let index = 0; index < maxLength; index += 1) {
+      const mergedBySignature = new Map();
+      const addMarker = (marker = {}) => {
+        const signature = JSON.stringify({
+          xPct: Number(marker.xPct || 0),
+          yPct: Number(marker.yPct || 0),
+          color: String(marker.color || ""),
+          player: this.normalizeGoalieName(marker.player || ""),
+          period: String(marker.period || "p1"),
+          markerType: String(marker.markerType || ""),
+          boxId: String(marker.boxId || "")
+        });
+        if (mergedBySignature.has(signature)) return;
+        mergedBySignature.set(signature, marker);
+      };
+      (filteredStoredMarkers[index] || []).forEach(addMarker);
+      (filteredDomMarkers[index] || []).forEach(addMarker);
+      mergedMarkers[index] = Array.from(mergedBySignature.values());
+    }
+    if (mergedMarkers.some(markers => (markers || []).length > 0)) {
+      AppStorage.setItem(markerStorageKey, JSON.stringify(mergedMarkers));
+    } else {
+      AppStorage.removeItem(markerStorageKey);
+    }
 
     const timeData = this.readTimeDataWithPlayers();
     Object.keys(timeData).forEach((key) => {
